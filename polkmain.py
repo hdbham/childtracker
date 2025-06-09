@@ -31,7 +31,7 @@ cred = credentials.Certificate({
 
 if not firebase_admin._apps:
     firebase_admin.initialize_app(cred, {
-        'databaseURL': 'https://polksdc-default-rtdb.firebaseio.com'
+        'databaseURL': 'https://polksdc-default-rtdb.firebaseio.com/'
     })
 
 # --- FIREBASE REFERENCES ---
