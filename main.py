@@ -350,21 +350,22 @@ if page == "👩‍🏫 Staff View":
             return f"── {opt[len(DIVIDER_PREFIX):]} ──"
         return f"  {opt}"
 
-    # Chips
-    chip_cols = st.columns(len(all_staff_with_kids) + 2)
-    with chip_cols[0]:
-        if st.button("My Group", use_container_width=True):
-            st.session_state["bulk_select"] = [r["child"] for r in rows_with_index]
-            rerun()
-    with chip_cols[1]:
-        if st.button("All", use_container_width=True):
-            st.session_state["bulk_select"] = all_child_names
-            rerun()
-    for idx, s in enumerate(all_staff_with_kids):
-        with chip_cols[idx + 2]:
-            if st.button(s.split()[0], key=f"chip_{s}", use_container_width=True):
-                st.session_state["bulk_select"] = list(data[data["staff"] == s]["child"])
+    # Chips — hidden once a selection exists
+    if not st.session_state.get("bulk_select"):
+        chip_cols = st.columns(len(all_staff_with_kids) + 2)
+        with chip_cols[0]:
+            if st.button("My Group", use_container_width=True):
+                st.session_state["bulk_select"] = [r["child"] for r in rows_with_index]
                 rerun()
+        with chip_cols[1]:
+            if st.button("All", use_container_width=True):
+                st.session_state["bulk_select"] = all_child_names
+                rerun()
+        for idx, s in enumerate(all_staff_with_kids):
+            with chip_cols[idx + 2]:
+                if st.button(s.split()[0], key=f"chip_{s}", use_container_width=True):
+                    st.session_state["bulk_select"] = list(data[data["staff"] == s]["child"])
+                    rerun()
 
     selected_raw = st.multiselect(
         "Children:",
