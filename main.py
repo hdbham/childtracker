@@ -7,7 +7,7 @@ import duckdb
 from pytz import timezone
 
 ADMIN_PIN = st.secrets.get("ADMIN_PIN", "")
-CHECKOUT_PIN = st.secrets.get("CHECKOUT_PIN", "")
+CHECKOUT_PIN = str(st.secrets.get("CHECKOUT_PIN", "")).strip()
 
 st.set_page_config(page_title="SDC Manager", page_icon="🏕️", layout="centered")
 
@@ -300,7 +300,7 @@ if page == "👩‍🏫 Staff View":
         # Sign out / Move — PIN required
         st.divider()
         bulk_pin = st.text_input("PIN for sign out / move:", type="password", key="bulk_pin")
-        pin_ok = bulk_pin == CHECKOUT_PIN and len(bulk_pin) > 0
+        pin_ok = len(bulk_pin) > 0 and bulk_pin.strip() == str(CHECKOUT_PIN).strip()
         col_out, col_move = st.columns(2)
         with col_out:
             if st.button("✅ Sign Out", use_container_width=True, disabled=not pin_ok):
