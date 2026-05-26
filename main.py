@@ -396,28 +396,8 @@ if page == "👩‍🏫 Staff View":
 
     if selected_ids:
         st.caption(f"{len(selected_ids)} selected")
-        bulk_pin = st.text_input("PIN:", type="password", key="bulk_pin")
-        pin_ok = bulk_pin == CHECKOUT_PIN and len(bulk_pin) > 0
 
-        # Sign out / Move
-        col_out, col_move = st.columns(2)
-        with col_out:
-            if st.button("✅ Sign Out", use_container_width=True, disabled=not pin_ok):
-                for child_id, child_name in selected_ids:
-                    assignments_ref.child(child_id).delete()
-                    logs_ref.push({"timestamp": now_timestamp(), "action": "Checkout", "staff": staff, "child": child_name, "notes": "Child Checked Out"})
-                st.success(f"Signed out {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'}.")
-                rerun()
-        with col_move:
-            move_to = st.selectbox("Move to:", [s for s in STAFF if s], key="bulk_move_to")
-            if st.button("🔄 Move", use_container_width=True, disabled=not pin_ok):
-                for child_id, child_name in selected_ids:
-                    assignments_ref.child(child_id).update({"staff": move_to, "child": child_name})
-                    logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": move_to, "child": child_name, "notes": f"Bulk moved to {move_to}"})
-                st.success(f"Moved {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'} to {move_to}.")
-                rerun()
-
-        # Care / Activity actions
+        # Care / Activity actions — no PIN needed
         st.divider()
         _action_options = {
             "Care": {"Ate": "Meal Confirmed", "Hydration": "Hydration Confirmed", "Sunscreen": "Sunscreen Applied", "Headcount": "Headcount Confirmed"},
@@ -435,6 +415,27 @@ if page == "👩‍🏫 Staff View":
                 for _, child_name in selected_ids:
                     logs_ref.push({"timestamp": ts, "action": selected_action, "staff": staff, "child": child_name, "notes": action_dict[selected_action]})
                 st.toast(f"{selected_action} logged for {len(selected_ids)} children")
+                rerun()
+
+        # Sign out / Move — PIN required
+        st.divider()
+        bulk_pin = st.text_input("PIN for sign out / move:", type="password", key="bulk_pin")
+        pin_ok = bulk_pin == CHECKOUT_PIN and len(bulk_pin) > 0
+        col_out, col_move = st.columns(2)
+        with col_out:
+            if st.button("✅ Sign Out", use_container_width=True, disabled=not pin_ok):
+                for child_id, child_name in selected_ids:
+                    assignments_ref.child(child_id).delete()
+                    logs_ref.push({"timestamp": now_timestamp(), "action": "Checkout", "staff": staff, "child": child_name, "notes": "Child Checked Out"})
+                st.success(f"Signed out {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'}.")
+                rerun()
+        with col_move:
+            move_to = st.selectbox("Move to:", [s for s in STAFF if s], key="bulk_move_to")
+            if st.button("🔄 Move", use_container_width=True, disabled=not pin_ok):
+                for child_id, child_name in selected_ids:
+                    assignments_ref.child(child_id).update({"staff": move_to, "child": child_name})
+                    logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": move_to, "child": child_name, "notes": f"Bulk moved to {move_to}"})
+                st.success(f"Moved {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'} to {move_to}.")
                 rerun()
 
 # ADMIN VIEW
