@@ -327,50 +327,60 @@ if page == "👩‍🏫 Staff View":
                         st.warning("Enter a note first.")
 
     # --- BULK ACTIONS ---
-    if rows_with_index:
-        st.subheader("⚡ Bulk Actions", divider="gray")
-        all_names = [row["child"] for row in rows_with_index]
+    st.subheader("⚡ Bulk Actions", divider="gray")
 
-        sel_col, all_col = st.columns([0.7, 0.3])
-        with sel_col:
-            selected_names = st.multiselect("Select children:", all_names, key="bulk_select", label_visibility="collapsed")
-        with all_col:
-            if st.button("Select All", use_container_width=True):
-                st.session_state["bulk_select"] = all_names
+    # All children at this site with id lookup
+    all_rows = data.to_dict(orient="records")
+    all_name_to_id = {r["child"]: r["id"] for r in all_rows}
+    all_site_names = [r["child"] for r in all_rows]
+    all_staff_with_kids = [s for s in STAFF if s and not data[data["staff"] == s].empty]
+
+    # Group quick-select chips
+    chip_cols = st.columns(len(all_staff_with_kids) + 2)
+    with chip_cols[0]:
+        if st.button("My Group", use_container_width=True):
+            st.session_state["bulk_select"] = [r["child"] for r in rows_with_index]
+            rerun()
+    with chip_cols[1]:
+        if st.button("All", use_container_width=True):
+            st.session_state["bulk_select"] = all_site_names
+            rerun()
+    for idx, s in enumerate(all_staff_with_kids):
+        with chip_cols[idx + 2]:
+            short = s.split()[0] if s else s
+            if st.button(short, key=f"chip_{s}", use_container_width=True):
+                st.session_state["bulk_select"] = list(data[data["staff"] == s]["child"])
                 rerun()
 
-        selected_ids = [
-            (row["id"], row["child"])
-            for row in rows_with_index
-            if row["child"] in selected_names
-        ]
+    selected_names = st.multiselect("Children:", all_site_names, key="bulk_select", label_visibility="collapsed")
+    selected_ids = [(all_name_to_id[n], n) for n in selected_names if n in all_name_to_id]
 
-        if selected_ids:
-            bulk_pin = st.text_input("PIN:", type="password", key="bulk_pin")
-            col_out, col_move = st.columns(2)
+    if selected_ids:
+        bulk_pin = st.text_input("PIN:", type="password", key="bulk_pin")
+        col_out, col_move = st.columns(2)
 
-            with col_out:
-                if st.button("✅ Sign Out", use_container_width=True):
-                    if bulk_pin == CHECKOUT_PIN:
-                        for child_id, child_name in selected_ids:
-                            assignments_ref.child(child_id).delete()
-                            logs_ref.push({"timestamp": now_timestamp(), "action": "Checkout", "staff": staff, "child": child_name, "notes": "Child Checked Out"})
-                        st.success(f"Signed out {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'}.")
-                        rerun()
-                    else:
-                        st.error("Incorrect PIN.")
+        with col_out:
+            if st.button("✅ Sign Out", use_container_width=True):
+                if bulk_pin == CHECKOUT_PIN:
+                    for child_id, child_name in selected_ids:
+                        assignments_ref.child(child_id).delete()
+                        logs_ref.push({"timestamp": now_timestamp(), "action": "Checkout", "staff": staff, "child": child_name, "notes": "Child Checked Out"})
+                    st.success(f"Signed out {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'}.")
+                    rerun()
+                else:
+                    st.error("Incorrect PIN.")
 
-            with col_move:
-                move_to = st.selectbox("Move to:", [s for s in STAFF if s], key="bulk_move_to")
-                if st.button("🔄 Move", use_container_width=True):
-                    if bulk_pin == CHECKOUT_PIN:
-                        for child_id, child_name in selected_ids:
-                            assignments_ref.child(child_id).update({"staff": move_to, "child": child_name})
-                            logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": move_to, "child": child_name, "notes": f"Bulk moved from {staff} to {move_to}"})
-                        st.success(f"Moved {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'} to {move_to}.")
-                        rerun()
-                    else:
-                        st.error("Incorrect PIN.")
+        with col_move:
+            move_to = st.selectbox("Move to:", [s for s in STAFF if s], key="bulk_move_to")
+            if st.button("🔄 Move", use_container_width=True):
+                if bulk_pin == CHECKOUT_PIN:
+                    for child_id, child_name in selected_ids:
+                        assignments_ref.child(child_id).update({"staff": move_to, "child": child_name})
+                        logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": move_to, "child": child_name, "notes": f"Bulk moved to {move_to}"})
+                    st.success(f"Moved {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'} to {move_to}.")
+                    rerun()
+                else:
+                    st.error("Incorrect PIN.")
 
     # --- OTHER STAFF AT THIS CENTER ---
     other_staff = [s for s in STAFF if s and s != staff]
