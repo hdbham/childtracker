@@ -838,21 +838,12 @@ if page == "📊 Admin View":
 if page == "📅 My Memos" and site == "cfc":
     st.title("📅 My Memos")
 
-    selected_staff = st.session_state.get("selected_staff", "")
-    if not selected_staff:
-        selected_staff = st.selectbox("Who are you?", [""] + STAFF)
-    if not selected_staff:
-        st.info("Select your name in Staff View first.")
-        st.stop()
-    st.caption(f"Viewing memos for: **{selected_staff}**")
-
     memos_data = fetch_memos()
     today = datetime.datetime.now(MT).date()
 
-    # Collect all memo dates for this staff member from today onward
     upcoming = []
     for k, v in memos_data.items():
-        if v.get("staff") == selected_staff and v.get("memo", "").strip():
+        if v.get("staff") == "Hunter" and v.get("memo", "").strip():
             try:
                 d = datetime.date.fromisoformat(v.get("date", ""))
                 if d >= today:
