@@ -170,9 +170,10 @@ for k, v in assignments_raw.items():
     rows.append({
         "id": k,
         "staff": v.get("staff", ""),
-        "child": v.get("child", "")
+        "child": v.get("child", ""),
+        "bathroom": v.get("bathroom", False)
     })
-data = pd.DataFrame(rows, columns=["id", "staff", "child"])
+data = pd.DataFrame(rows, columns=["id", "staff", "child", "bathroom"])
 
 #test
 # --- PAGE NAVIGATION ---
@@ -287,16 +288,24 @@ if page == "👩‍🏫 Staff View":
     for i, row in enumerate(rows_with_index):
         child_name = row["child"]
         child_id = row["id"]
+        in_bathroom = row.get("bathroom", False)
 
-        with st.expander(child_name):
+        label = f"🚻 {child_name}" if in_bathroom else child_name
+        with st.expander(label):
             st.caption(f"📍 {new_location}")
 
             c1, c2 = st.columns(2)
             with c1:
-                if st.button("🚻 Bathroom", key=f"bath_{i}", use_container_width=True):
-                    logs_ref.push({"timestamp": now_timestamp(), "action": "BATHROOM", "staff": staff, "child": child_name, "notes": "Bathroom Break"})
-                    st.toast(f"Bathroom logged for {child_name}")
-                    rerun()
+                if in_bathroom:
+                    if st.button("✅ Back", key=f"bath_{i}", use_container_width=True):
+                        assignments_ref.child(child_id).update({"bathroom": False})
+                        logs_ref.push({"timestamp": now_timestamp(), "action": "BATHROOM_RETURN", "staff": staff, "child": child_name, "notes": "Returned from bathroom"})
+                        rerun()
+                else:
+                    if st.button("🚻 Bathroom", key=f"bath_{i}", use_container_width=True):
+                        assignments_ref.child(child_id).update({"bathroom": True})
+                        logs_ref.push({"timestamp": now_timestamp(), "action": "BATHROOM", "staff": staff, "child": child_name, "notes": "Bathroom Break"})
+                        rerun()
             with c2:
                 new_staff_for_child = st.selectbox("Move to:", [s for s in STAFF if s], index=STAFF.index(staff) if staff in STAFF else 0, key=f"move_{i}", label_visibility="collapsed")
                 if st.button("🔄 Move", key=f"btn_move_{i}", use_container_width=True):
@@ -375,14 +384,22 @@ if page == "👩‍🏫 Staff View":
             for j, orow in enumerate(other_rows):
                 ochild = orow["child"]
                 ochild_id = orow["id"]
-                with st.expander(ochild):
+                oin_bathroom = orow.get("bathroom", False)
+                olabel = f"🚻 {ochild}" if oin_bathroom else ochild
+                with st.expander(olabel):
                     st.caption(f"📍 {other_loc}")
                     c1, c2 = st.columns(2)
                     with c1:
-                        if st.button("🚻 Bathroom", key=f"obath_{other}_{j}", use_container_width=True):
-                            logs_ref.push({"timestamp": now_timestamp(), "action": "BATHROOM", "staff": other, "child": ochild, "notes": "Bathroom Break"})
-                            st.toast(f"Bathroom logged for {ochild}")
-                            rerun()
+                        if oin_bathroom:
+                            if st.button("✅ Back", key=f"obath_{other}_{j}", use_container_width=True):
+                                assignments_ref.child(ochild_id).update({"bathroom": False})
+                                logs_ref.push({"timestamp": now_timestamp(), "action": "BATHROOM_RETURN", "staff": other, "child": ochild, "notes": "Returned from bathroom"})
+                                rerun()
+                        else:
+                            if st.button("🚻 Bathroom", key=f"obath_{other}_{j}", use_container_width=True):
+                                assignments_ref.child(ochild_id).update({"bathroom": True})
+                                logs_ref.push({"timestamp": now_timestamp(), "action": "BATHROOM", "staff": other, "child": ochild, "notes": "Bathroom Break"})
+                                rerun()
                     with c2:
                         omove_to = st.selectbox("Move to:", [s for s in STAFF if s], index=STAFF.index(other) if other in STAFF else 0, key=f"omove_{other}_{j}", label_visibility="collapsed")
                         if st.button("🔄 Move", key=f"obtn_move_{other}_{j}", use_container_width=True):
