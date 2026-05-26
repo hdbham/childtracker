@@ -332,8 +332,11 @@ if page == "👩‍🏫 Staff View":
     # All children at this site with id lookup
     all_rows = data.to_dict(orient="records")
     all_name_to_id = {r["child"]: r["id"] for r in all_rows}
-    all_site_names = [r["child"] for r in all_rows]
     all_staff_with_kids = [s for s in STAFF if s and not data[data["staff"] == s].empty]
+    child_to_staff = {r["child"]: r["staff"] for r in all_rows}
+
+    # Options sorted by staff group so dropdown appears grouped
+    grouped_options = sorted(all_name_to_id.keys(), key=lambda n: (child_to_staff.get(n, ""), n))
 
     # Group quick-select chips
     chip_cols = st.columns(len(all_staff_with_kids) + 2)
@@ -343,7 +346,7 @@ if page == "👩‍🏫 Staff View":
             rerun()
     with chip_cols[1]:
         if st.button("All", use_container_width=True):
-            st.session_state["bulk_select"] = all_site_names
+            st.session_state["bulk_select"] = grouped_options
             rerun()
     for idx, s in enumerate(all_staff_with_kids):
         with chip_cols[idx + 2]:
@@ -352,7 +355,13 @@ if page == "👩‍🏫 Staff View":
                 st.session_state["bulk_select"] = list(data[data["staff"] == s]["child"])
                 rerun()
 
-    selected_names = st.multiselect("Children:", all_site_names, key="bulk_select", label_visibility="collapsed")
+    selected_names = st.multiselect(
+        "Children:",
+        options=grouped_options,
+        format_func=lambda n: f"  {n}  ·  {child_to_staff.get(n, '')}",
+        key="bulk_select",
+        label_visibility="collapsed",
+    )
     selected_ids = [(all_name_to_id[n], n) for n in selected_names if n in all_name_to_id]
 
     if selected_ids:
