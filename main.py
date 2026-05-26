@@ -190,7 +190,7 @@ page = st.sidebar.radio("📂 Navigate", _nav)
 # STAFF VIEW
 if page == "👩‍🏫 Staff View":
     st.title(f"SDC Dashboard — {SITE_LABEL} 😎")
-    staff = st.selectbox("Select Staff", STAFF)
+    staff = st.selectbox("Select Staff", STAFF, key="selected_staff")
     if not staff: st.stop()
 
     memos_data = fetch_memos()
@@ -838,10 +838,13 @@ if page == "📊 Admin View":
 if page == "📅 My Memos" and site == "cfc":
     st.title("📅 My Memos")
 
-    selected_staff = st.selectbox("Who are you?", [""] + STAFF)
+    selected_staff = st.session_state.get("selected_staff", "")
     if not selected_staff:
-        st.info("Select your name to view your memos.")
+        selected_staff = st.selectbox("Who are you?", [""] + STAFF)
+    if not selected_staff:
+        st.info("Select your name in Staff View first.")
         st.stop()
+    st.caption(f"Viewing memos for: **{selected_staff}**")
 
     memos_data = fetch_memos()
     today = datetime.datetime.now(MT).date()
