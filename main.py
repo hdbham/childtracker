@@ -161,7 +161,6 @@ if _last_cleared != _today:
 staff_data_raw = fetch_staff()
 staff_lookup = {v["name"]: v.get("location", "N/A") for v in staff_data_raw.values() if "name" in v}
 STAFF = list(staff_lookup.keys())
-STAFF.insert(0, "")
 
 # --- LOAD ASSIGNMENTS DATA ---
 assignments_raw = fetch_assignments()
@@ -230,6 +229,94 @@ if page == "👩‍🏫 Staff View":
     - ✅ Log everything
     - 📢 Announce changes on walkie
     """)
+
+    # --- BULK ACTIONS ---
+    st.divider()
+    st.subheader("⚡ Bulk Actions", divider="gray")
+
+    # All children at this site with id lookup
+    all_rows = data.to_dict(orient="records")
+    all_name_to_id = {r["child"]: r["id"] for r in all_rows}
+    all_staff_with_kids = [s for s in STAFF if s and not data[data["staff"] == s].empty]
+    child_to_staff = {r["child"]: r["staff"] for r in all_rows}
+
+    DIVIDER_PREFIX = "§div§"
+    grouped_options = []
+    all_child_names = []
+    for s in all_staff_with_kids:
+        grouped_options.append(f"{DIVIDER_PREFIX}{s}")
+        children = list(data[data["staff"] == s]["child"])
+        grouped_options.extend(children)
+        all_child_names.extend(children)
+
+    def _fmt(opt):
+        if opt.startswith(DIVIDER_PREFIX):
+            return f"── {opt[len(DIVIDER_PREFIX):]} ──"
+        return f"  {opt}"
+
+    # Expand any dividers before rendering the widget
+    _pre = st.session_state.get("bulk_select", [])
+    _divs = [n for n in _pre if n.startswith(DIVIDER_PREFIX)]
+    if _divs:
+        _real = [n for n in _pre if not n.startswith(DIVIDER_PREFIX)]
+        _added = []
+        for div in _divs:
+            _added.extend(list(data[data["staff"] == div[len(DIVIDER_PREFIX):]]["child"]))
+        st.session_state["bulk_select"] = list(dict.fromkeys(_real + _added))
+
+    selected_raw = st.multiselect(
+        "Children:",
+        options=grouped_options,
+        format_func=_fmt,
+        key="bulk_select",
+        label_visibility="collapsed",
+    )
+    selected_names = [n for n in selected_raw if not n.startswith(DIVIDER_PREFIX)]
+    selected_ids = [(all_name_to_id[n], n) for n in selected_names if n in all_name_to_id]
+
+    if selected_ids:
+        st.caption(f"{len(selected_ids)} selected")
+
+        # Care / Activity actions — no PIN needed
+        st.divider()
+        _action_options = {
+            "Care": {"Ate": "Meal Confirmed", "Hydration": "Hydration Confirmed", "Sunscreen": "Sunscreen Applied", "Headcount": "Headcount Confirmed"},
+            "Activity": {"STEM": "STEM Activity Completed", "SEL": "SEL Activity Completed", "PE": "PE Activity Completed", "ARTS": "Arts & Crafts Completed"},
+        }
+        cat_col, act_col, btn_col = st.columns([0.25, 0.45, 0.3])
+        with cat_col:
+            category = st.radio("Type", list(_action_options.keys()), key="bulk_cat", label_visibility="collapsed")
+        with act_col:
+            action_dict = _action_options[category]
+            selected_action = st.selectbox("Action", list(action_dict.keys()), key="bulk_act", label_visibility="collapsed")
+        with btn_col:
+            if st.button(f"Log {selected_action}", use_container_width=True):
+                ts = now_timestamp()
+                for _, child_name in selected_ids:
+                    logs_ref.push({"timestamp": ts, "action": selected_action, "staff": staff, "child": child_name, "notes": action_dict[selected_action]})
+                st.toast(f"{selected_action} logged for {len(selected_ids)} children")
+                rerun()
+
+        # Sign out / Move — PIN required
+        st.divider()
+        bulk_pin = st.text_input("PIN for sign out / move:", type="password", key="bulk_pin")
+        pin_ok = bulk_pin == CHECKOUT_PIN and len(bulk_pin) > 0
+        col_out, col_move = st.columns(2)
+        with col_out:
+            if st.button("✅ Sign Out", use_container_width=True, disabled=not pin_ok):
+                for child_id, child_name in selected_ids:
+                    assignments_ref.child(child_id).delete()
+                    logs_ref.push({"timestamp": now_timestamp(), "action": "Checkout", "staff": staff, "child": child_name, "notes": "Child Checked Out"})
+                st.success(f"Signed out {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'}.")
+                rerun()
+        with col_move:
+            move_to = st.selectbox("Move to:", [s for s in STAFF if s], key="bulk_move_to")
+            if st.button("🔄 Move", use_container_width=True, disabled=not pin_ok):
+                for child_id, child_name in selected_ids:
+                    assignments_ref.child(child_id).update({"staff": move_to, "child": child_name})
+                    logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": move_to, "child": child_name, "notes": f"Bulk moved to {move_to}"})
+                st.success(f"Moved {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'} to {move_to}.")
+                rerun()
 
     st.subheader("➕ Add Child")
     new_child = st.text_input("Name(s) — separate multiple with commas:", key="new_child_global")
@@ -343,94 +430,6 @@ if page == "👩‍🏫 Staff View":
             if not other_rows:
                 st.caption("No children assigned")
 
-
-    # --- BULK ACTIONS ---
-    st.divider()
-    st.subheader("⚡ Bulk Actions", divider="gray")
-
-    # All children at this site with id lookup
-    all_rows = data.to_dict(orient="records")
-    all_name_to_id = {r["child"]: r["id"] for r in all_rows}
-    all_staff_with_kids = [s for s in STAFF if s and not data[data["staff"] == s].empty]
-    child_to_staff = {r["child"]: r["staff"] for r in all_rows}
-
-    DIVIDER_PREFIX = "§div§"
-    grouped_options = []
-    all_child_names = []
-    for s in all_staff_with_kids:
-        grouped_options.append(f"{DIVIDER_PREFIX}{s}")
-        children = list(data[data["staff"] == s]["child"])
-        grouped_options.extend(children)
-        all_child_names.extend(children)
-
-    def _fmt(opt):
-        if opt.startswith(DIVIDER_PREFIX):
-            return f"── {opt[len(DIVIDER_PREFIX):]} ──"
-        return f"  {opt}"
-
-    # Expand any dividers before rendering the widget
-    _pre = st.session_state.get("bulk_select", [])
-    _divs = [n for n in _pre if n.startswith(DIVIDER_PREFIX)]
-    if _divs:
-        _real = [n for n in _pre if not n.startswith(DIVIDER_PREFIX)]
-        _added = []
-        for div in _divs:
-            _added.extend(list(data[data["staff"] == div[len(DIVIDER_PREFIX):]]["child"]))
-        st.session_state["bulk_select"] = list(dict.fromkeys(_real + _added))
-
-    selected_raw = st.multiselect(
-        "Children:",
-        options=grouped_options,
-        format_func=_fmt,
-        key="bulk_select",
-        label_visibility="collapsed",
-    )
-    selected_names = [n for n in selected_raw if not n.startswith(DIVIDER_PREFIX)]
-    selected_ids = [(all_name_to_id[n], n) for n in selected_names if n in all_name_to_id]
-
-    if selected_ids:
-        st.caption(f"{len(selected_ids)} selected")
-
-        # Care / Activity actions — no PIN needed
-        st.divider()
-        _action_options = {
-            "Care": {"Ate": "Meal Confirmed", "Hydration": "Hydration Confirmed", "Sunscreen": "Sunscreen Applied", "Headcount": "Headcount Confirmed"},
-            "Activity": {"STEM": "STEM Activity Completed", "SEL": "SEL Activity Completed", "PE": "PE Activity Completed", "ARTS": "Arts & Crafts Completed"},
-        }
-        cat_col, act_col, btn_col = st.columns([0.25, 0.45, 0.3])
-        with cat_col:
-            category = st.radio("Type", list(_action_options.keys()), key="bulk_cat", label_visibility="collapsed")
-        with act_col:
-            action_dict = _action_options[category]
-            selected_action = st.selectbox("Action", list(action_dict.keys()), key="bulk_act", label_visibility="collapsed")
-        with btn_col:
-            if st.button(f"Log {selected_action}", use_container_width=True):
-                ts = now_timestamp()
-                for _, child_name in selected_ids:
-                    logs_ref.push({"timestamp": ts, "action": selected_action, "staff": staff, "child": child_name, "notes": action_dict[selected_action]})
-                st.toast(f"{selected_action} logged for {len(selected_ids)} children")
-                rerun()
-
-        # Sign out / Move — PIN required
-        st.divider()
-        bulk_pin = st.text_input("PIN for sign out / move:", type="password", key="bulk_pin")
-        pin_ok = bulk_pin == CHECKOUT_PIN and len(bulk_pin) > 0
-        col_out, col_move = st.columns(2)
-        with col_out:
-            if st.button("✅ Sign Out", use_container_width=True, disabled=not pin_ok):
-                for child_id, child_name in selected_ids:
-                    assignments_ref.child(child_id).delete()
-                    logs_ref.push({"timestamp": now_timestamp(), "action": "Checkout", "staff": staff, "child": child_name, "notes": "Child Checked Out"})
-                st.success(f"Signed out {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'}.")
-                rerun()
-        with col_move:
-            move_to = st.selectbox("Move to:", [s for s in STAFF if s], key="bulk_move_to")
-            if st.button("🔄 Move", use_container_width=True, disabled=not pin_ok):
-                for child_id, child_name in selected_ids:
-                    assignments_ref.child(child_id).update({"staff": move_to, "child": child_name})
-                    logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": move_to, "child": child_name, "notes": f"Bulk moved to {move_to}"})
-                st.success(f"Moved {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'} to {move_to}.")
-                rerun()
 
 # ADMIN VIEW
 if page == "📊 Admin View":
