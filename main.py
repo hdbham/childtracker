@@ -384,6 +384,16 @@ if page == "👩‍🏫 Staff View":
                     st.session_state["bulk_select"] = list(data[data["staff"] == s]["child"])
                     rerun()
 
+    # Expand any dividers before rendering the widget
+    _pre = st.session_state.get("bulk_select", [])
+    _divs = [n for n in _pre if n.startswith(DIVIDER_PREFIX)]
+    if _divs:
+        _real = [n for n in _pre if not n.startswith(DIVIDER_PREFIX)]
+        _added = []
+        for div in _divs:
+            _added.extend(list(data[data["staff"] == div[len(DIVIDER_PREFIX):]]["child"]))
+        st.session_state["bulk_select"] = list(dict.fromkeys(_real + _added))
+
     selected_raw = st.multiselect(
         "Children:",
         options=grouped_options,
@@ -391,16 +401,6 @@ if page == "👩‍🏫 Staff View":
         key="bulk_select",
         label_visibility="collapsed",
     )
-    # If a staff divider was tapped, expand it to that group's children
-    dividers_tapped = [n for n in selected_raw if n.startswith(DIVIDER_PREFIX)]
-    if dividers_tapped:
-        real_already = [n for n in selected_raw if not n.startswith(DIVIDER_PREFIX)]
-        added = []
-        for div in dividers_tapped:
-            added.extend(list(data[data["staff"] == div[len(DIVIDER_PREFIX):]]["child"]))
-        st.session_state["bulk_select"] = list(dict.fromkeys(real_already + added))
-        rerun()
-
     selected_names = [n for n in selected_raw if not n.startswith(DIVIDER_PREFIX)]
     selected_ids = [(all_name_to_id[n], n) for n in selected_names if n in all_name_to_id]
 
