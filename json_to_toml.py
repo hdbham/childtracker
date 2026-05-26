@@ -1,7 +1,7 @@
 import json
 
 # Load your downloaded service account json
-with open("Polksdc Firebase Admin SDK.json", "r") as f:
+with open(".streamlit/Polksdc Firebase Admin SDK.json", "r") as f:
     data = json.load(f)
 
 # Open a file to write properly formatted toml
