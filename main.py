@@ -331,13 +331,14 @@ if page == "👩‍🏫 Staff View":
                 st.success(f"Moved to {new_staff_for_child}")
                 rerun()
 
-    # Bulk actions
+    # Bulk actions — reads checkboxes already rendered inside expanders above
     if rows_with_index:
         st.subheader("⚡ Bulk Actions", divider="gray")
-        selected_ids = []
-        for i, row in enumerate(rows_with_index):
-            if st.checkbox(row["child"], key=f"bulk_chk_{i}"):
-                selected_ids.append((row["id"], row["child"]))
+        selected_ids = [
+            (row["id"], row["child"])
+            for i, row in enumerate(rows_with_index)
+            if st.session_state.get(f"bulk_chk_{i}", False)
+        ]
 
         if selected_ids:
             bulk_pin = st.text_input("PIN:", type="password", key="bulk_pin")
