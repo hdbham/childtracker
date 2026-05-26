@@ -231,38 +231,6 @@ if page == "👩‍🏫 Staff View":
     - 📢 Announce changes on walkie
     """)
 
-    with st.expander("🛠️ Whole Group Actions", expanded=True):
-        action_options = {
-            "Care Actions": {
-                "Ate": "Meal Confirmed",
-                "Hydration": "Hydration Confirmed",
-                "Sunscreen": "Sunscreen Applied",
-                "Accurate Headcount": "Headcount Confirmed"
-            },
-            "Activity Participation": {
-                "STEM": "STEM Activity Completed",
-                "SEL": "SEL Activity Completed",
-                "PE": "Physical Education Activity Completed",
-                "ARTS": "Arts & Crafts Completed"
-            }
-        }
-        category = st.radio("Action Type", list(action_options.keys()), key="cat")
-        action_dict = action_options[category]
-        selected_action = st.selectbox(f"Select {category[:-1]}", list(action_dict.keys()), key="act")
-
-        if st.button(f"Confirm {category[:-1]}"):
-            timestamp = now_timestamp()
-            for row in rows_with_index:
-                logs_ref.push({
-                    "timestamp": timestamp,
-                    "action": selected_action,
-                    "staff": staff,
-                    "child": row["child"],
-                    "notes": action_dict[selected_action]
-                })
-            st.success(f"✅ {selected_action} logged for all")
-            rerun()
-
     st.subheader("➕ Add Child")
     new_child = st.text_input("Name(s) — separate multiple with commas:", key="new_child_global")
     if st.button("Add Child"):
@@ -330,8 +298,8 @@ if page == "👩‍🏫 Staff View":
     other_staff = [s for s in STAFF if s and s != staff]
     if other_staff:
         st.divider()
-        st.subheader("👥 Rest of Center", divider="gray")
-        for other in other_staff:
+        with st.expander(f"👥 Rest of Center ({len(data) - len(rows_with_index)} children)", expanded=False):
+          for other in other_staff:
             other_loc = staff_lookup.get(other, "N/A")
             other_rows = data[data["staff"] == other].to_dict(orient="records")
             st.markdown(f"**{other}** — {len(other_rows)} children")
@@ -431,6 +399,7 @@ if page == "👩‍🏫 Staff View":
         bulk_pin = st.text_input("PIN:", type="password", key="bulk_pin")
         pin_ok = bulk_pin == CHECKOUT_PIN and len(bulk_pin) > 0
 
+        # Sign out / Move
         col_out, col_move = st.columns(2)
         with col_out:
             if st.button("✅ Sign Out", use_container_width=True, disabled=not pin_ok):
@@ -446,6 +415,26 @@ if page == "👩‍🏫 Staff View":
                     assignments_ref.child(child_id).update({"staff": move_to, "child": child_name})
                     logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": move_to, "child": child_name, "notes": f"Bulk moved to {move_to}"})
                 st.success(f"Moved {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'} to {move_to}.")
+                rerun()
+
+        # Care / Activity actions
+        st.divider()
+        _action_options = {
+            "Care": {"Ate": "Meal Confirmed", "Hydration": "Hydration Confirmed", "Sunscreen": "Sunscreen Applied", "Headcount": "Headcount Confirmed"},
+            "Activity": {"STEM": "STEM Activity Completed", "SEL": "SEL Activity Completed", "PE": "PE Activity Completed", "ARTS": "Arts & Crafts Completed"},
+        }
+        cat_col, act_col, btn_col = st.columns([0.25, 0.45, 0.3])
+        with cat_col:
+            category = st.radio("Type", list(_action_options.keys()), key="bulk_cat", label_visibility="collapsed")
+        with act_col:
+            action_dict = _action_options[category]
+            selected_action = st.selectbox("Action", list(action_dict.keys()), key="bulk_act", label_visibility="collapsed")
+        with btn_col:
+            if st.button(f"Log {selected_action}", use_container_width=True):
+                ts = now_timestamp()
+                for _, child_name in selected_ids:
+                    logs_ref.push({"timestamp": ts, "action": selected_action, "staff": staff, "child": child_name, "notes": action_dict[selected_action]})
+                st.toast(f"{selected_action} logged for {len(selected_ids)} children")
                 rerun()
 
 # ADMIN VIEW
