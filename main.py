@@ -6,6 +6,9 @@ import datetime
 import duckdb
 from pytz import timezone
 
+ADMIN_PIN = st.secrets.get("ADMIN_PIN", "")
+CHECKOUT_PIN = st.secrets.get("CHECKOUT_PIN", "")
+
 st.set_page_config(page_title="SDC Manager", page_icon="🏕️", layout="centered")
 
 # --- PWA (injected after site is known) ---
@@ -258,7 +261,6 @@ if page == "👩‍🏫 Staff View":
     st.write(f"🏕️ Total in Center: **{len(data)}**")
     st.write(f"🧑‍🏫 Under {staff}: **{len(rows_with_index)}**")
 
-    CHECKOUT_PIN = "9622"
 
     for i, row in enumerate(rows_with_index):
         child_name = row["child"]
@@ -414,7 +416,6 @@ if page == "👩‍🏫 Staff View":
 
 # ADMIN VIEW
 if page == "📊 Admin View":
-    ADMIN_PIN = "1137"
     pin_input = st.text_input("🔐 Enter Admin PIN:", type="password", max_chars=4)
     if pin_input != ADMIN_PIN:
         if pin_input:

@@ -1,2 +1,7 @@
 /.streamlit/secrets.toml
+/.streamlit/secrets2.toml
+/.streamlit/*.json
 Group Manager Firebase Service Account.json
+.env
+__pycache__/
+*.pyc
