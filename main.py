@@ -327,19 +327,6 @@ if page == "👩‍🏫 Staff View":
     from { opacity: 0; transform: translateY(-4px); }
     to   { opacity: 1; transform: translateY(0); }
 }
-/* Checkbox button */
-[class*="st-key-chk_btn_"] button {
-    background: var(--secondary-background-color) !important;
-    border: 1px solid rgba(128,128,128,0.15) !important;
-    border-radius: 0.5rem !important;
-    color: var(--text-color) !important;
-    box-shadow: none !important;
-    font-size: 1.1rem !important;
-    padding: 0.45rem !important;
-    transition: filter 0.15s ease !important;
-}
-[class*="st-key-chk_btn_"] button:hover { filter: brightness(0.92) !important; }
-[data-theme="dark"] [class*="st-key-chk_btn_"] button:hover { filter: brightness(1.15) !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -351,18 +338,13 @@ if page == "👩‍🏫 Staff View":
             st.session_state[open_key] = False
 
         arrow = "▾" if st.session_state[open_key] else "▸"
-        checked = st.session_state.get(f"bulk_chk_{i}", False)
-        box = "☑" if checked else "☐"
-
-        col_toggle, col_chk = st.columns([0.85, 0.15])
+        col_toggle, col_chk = st.columns([0.88, 0.12])
         with col_toggle:
             if st.button(f"{arrow}  {child_name}", key=f"toggle_{i}", use_container_width=True):
                 st.session_state[open_key] = not st.session_state[open_key]
                 rerun()
         with col_chk:
-            if st.button(box, key=f"chk_btn_{i}", use_container_width=True):
-                st.session_state[f"bulk_chk_{i}"] = not checked
-                rerun()
+            st.checkbox("", key=f"bulk_chk_{i}", label_visibility="collapsed")
 
         # Expandable content
         if st.session_state[open_key]:
