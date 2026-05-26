@@ -289,47 +289,35 @@ if page == "👩‍🏫 Staff View":
         child_id = row["id"]
 
         with st.expander(child_name):
-            st.caption(f"Assigned to: {staff}  |  Location: {new_location}")
+            st.caption(f"📍 {new_location}")
 
-            incident_note = st.text_input(f"Incident:", key=f"inc_{i}")
-            if st.button(f"Save Incident", key=f"btn_inc_{i}"):
-                incidents_ref.push({
-                    "timestamp": now_timestamp(),
-                    "staff": staff,
-                    "child": child_name,
-                    "note": incident_note
-                })
-                st.success("Incident logged!")
-                rerun()
+            # Quick actions row
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("🍎 Snack", key=f"snack_{i}", use_container_width=True):
+                    logs_ref.push({"timestamp": now_timestamp(), "action": "SNACK", "staff": staff, "child": child_name, "notes": "Snack Provided"})
+                    st.toast(f"Snack logged for {child_name}")
+                    rerun()
+            with c2:
+                new_staff_for_child = st.selectbox("Move to:", [s for s in STAFF if s], index=STAFF.index(staff) if staff in STAFF else 0, key=f"move_{i}", label_visibility="collapsed")
+                if st.button("🔄 Move", key=f"btn_move_{i}", use_container_width=True):
+                    assignments_ref.child(child_id).update({"staff": new_staff_for_child, "child": child_name})
+                    logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": new_staff_for_child, "child": child_name, "notes": f"Moved from {staff} to {new_staff_for_child}"})
+                    st.success(f"Moved to {new_staff_for_child}")
+                    rerun()
 
-            if st.button(f"Snack ✅", key=f"snack_{i}"):
-                logs_ref.push({
-                    "timestamp": now_timestamp(),
-                    "action": "SNACK",
-                    "staff": staff,
-                    "child": child_name,
-                    "notes": "Snack Provided"
-                })
-                st.success(f"Snack logged")
-                rerun()
-
-            new_staff_for_child = st.selectbox(
-                "Reassign:",
-                [s for s in STAFF if s],
-                index=STAFF.index(staff) if staff in STAFF else 0,
-                key=f"move_{i}"
-            )
-            if st.button(f"Confirm Move", key=f"btn_move_{i}"):
-                assignments_ref.child(child_id).update({"staff": new_staff_for_child, "child": child_name})
-                logs_ref.push({
-                    "timestamp": now_timestamp(),
-                    "action": "Move",
-                    "staff": new_staff_for_child,
-                    "child": child_name,
-                    "notes": f"Moved from {staff} to {new_staff_for_child}"
-                })
-                st.success(f"Moved to {new_staff_for_child}")
-                rerun()
+            # Incident — inline
+            inc_col, btn_col = st.columns([0.78, 0.22])
+            with inc_col:
+                incident_note = st.text_input("Incident note", placeholder="Describe incident…", key=f"inc_{i}", label_visibility="collapsed")
+            with btn_col:
+                if st.button("Log", key=f"btn_inc_{i}", use_container_width=True):
+                    if incident_note:
+                        incidents_ref.push({"timestamp": now_timestamp(), "staff": staff, "child": child_name, "note": incident_note})
+                        st.toast("Incident logged")
+                        rerun()
+                    else:
+                        st.warning("Enter a note first.")
 
     # --- BULK ACTIONS ---
     if rows_with_index:
