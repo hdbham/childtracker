@@ -6,8 +6,14 @@ import datetime
 import duckdb
 from pytz import timezone
 
-ADMIN_PIN = str(st.secrets.get("ADMIN_PIN", "")).strip()
-CHECKOUT_PIN = str(st.secrets.get("CHECKOUT_PIN", "")).strip()
+try:
+    ADMIN_PIN = str(st.secrets["ADMIN_PIN"]).strip()
+except:
+    ADMIN_PIN = ""
+try:
+    CHECKOUT_PIN = str(st.secrets["CHECKOUT_PIN"]).strip()
+except:
+    CHECKOUT_PIN = ""
 
 st.set_page_config(page_title="SDC Manager", page_icon="🏕️", layout="centered")
 
