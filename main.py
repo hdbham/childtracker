@@ -271,6 +271,7 @@ if page == "👩‍🏫 Staff View":
         child_name = row["child"]
         child_id = row["id"]
         with st.expander(f"**{child_name}**"):
+            st.checkbox("Select for bulk action", key=f"bulk_chk_{i}")
             st.write(f"Assigned to: {staff}  |  Location: {new_location}")
 
             incident_note = st.text_input(f"Incident:", key=f"inc_{i}")
