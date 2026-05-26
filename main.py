@@ -300,6 +300,8 @@ if page == "👩‍🏫 Staff View":
         # Sign out / Move — PIN required
         st.divider()
         bulk_pin = st.text_input("PIN for sign out / move:", type="password", key="bulk_pin")
+        if bulk_pin:
+            st.caption(f"entered: `{repr(bulk_pin)}` | stored: `{repr(CHECKOUT_PIN)}`")
         col_out, col_move = st.columns(2)
         with col_out:
             if st.button("✅ Sign Out", use_container_width=True):
