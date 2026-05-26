@@ -13,19 +13,33 @@ if uploaded_file is not None:
     con = duckdb.connect(database=':memory:')
     con.register("roster", df_csv)
 
-    query = """
-    SELECT
-        "Participant",
-        "allergies-sensitivities-details" AS Allergies,
-        "illness-medical-conditions-details" AS MedicalConditions,
-        "behavior-mental-health-info" AS MentalHealthInfo,
-        "additional-health-info-or-special-instructions" AS HealthInfo,
-        "list-regular-medications" AS Medications,
-        "Unit Primary Phone" AS PrimaryPhone,
-        "Emergency Phone" AS EmergencyPhone
-    FROM roster
-    """
-    df = con.execute(query).df()
+    cols = set(df_csv.columns.tolist())
+
+    def col_expr(candidates, alias):
+        match = next((c for c in candidates if c in cols), None)
+        if match:
+            return f'"{match}" AS {alias}'
+        return f"NULL AS {alias}"
+
+    select_parts = [
+        col_expr(["Participant"], "Participant"),
+        col_expr(["allergies-sensitivities-details"], "Allergies"),
+        col_expr(["illness-medical-conditions-details"], "MedicalConditions"),
+        col_expr(["behavior-mental-health-info", "behavior-mental-health-details"], "MentalHealthInfo"),
+        col_expr(["additional-health-info-or-special-instructions"], "HealthInfo"),
+        col_expr(["list-regular-medications"], "Medications"),
+        col_expr(["Unit Primary Phone"], "PrimaryPhone"),
+        col_expr(["Emergency Phone"], "EmergencyPhone"),
+    ]
+
+    query = f"SELECT {', '.join(select_parts)} FROM roster"
+    try:
+        df = con.execute(query).df()
+    except Exception as e:
+        st.error(f"Query failed: {e}")
+        st.write("**Columns found in your CSV:**")
+        st.write(list(cols))
+        st.stop()
     df.columns = [col.replace("-", " ").replace("/", " ").title() for col in df.columns]
 
     # Build very basic HTML
