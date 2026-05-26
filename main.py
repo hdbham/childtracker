@@ -284,76 +284,62 @@ if page == "👩‍🏫 Staff View":
     st.write(f"🧑‍🏫 Under {staff}: **{len(rows_with_index)}**")
 
 
-    st.markdown("""
-<style>
-/* Align checkbox with expander header */
-[class*="st-key-bulk_chk_"] {
-    padding-top: 0.5rem !important;
-}
-[class*="st-key-bulk_chk_"] p {
-    display: none !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
     for i, row in enumerate(rows_with_index):
         child_name = row["child"]
         child_id = row["id"]
 
-        col_exp, col_chk = st.columns([0.88, 0.12])
-        with col_chk:
-            st.checkbox("", key=f"bulk_chk_{i}", label_visibility="collapsed")
-        with col_exp:
-            with st.expander(child_name):
-                st.caption(f"Assigned to: {staff}  |  Location: {new_location}")
+        with st.expander(child_name):
+            st.caption(f"Assigned to: {staff}  |  Location: {new_location}")
 
-                incident_note = st.text_input(f"Incident:", key=f"inc_{i}")
-                if st.button(f"Save Incident", key=f"btn_inc_{i}"):
-                    incidents_ref.push({
-                        "timestamp": now_timestamp(),
-                        "staff": staff,
-                        "child": child_name,
-                        "note": incident_note
-                    })
-                    st.success("Incident logged!")
-                    rerun()
+            incident_note = st.text_input(f"Incident:", key=f"inc_{i}")
+            if st.button(f"Save Incident", key=f"btn_inc_{i}"):
+                incidents_ref.push({
+                    "timestamp": now_timestamp(),
+                    "staff": staff,
+                    "child": child_name,
+                    "note": incident_note
+                })
+                st.success("Incident logged!")
+                rerun()
 
-                if st.button(f"Snack ✅", key=f"snack_{i}"):
-                    logs_ref.push({
-                        "timestamp": now_timestamp(),
-                        "action": "SNACK",
-                        "staff": staff,
-                        "child": child_name,
-                        "notes": "Snack Provided"
-                    })
-                    st.success(f"Snack logged")
-                    rerun()
+            if st.button(f"Snack ✅", key=f"snack_{i}"):
+                logs_ref.push({
+                    "timestamp": now_timestamp(),
+                    "action": "SNACK",
+                    "staff": staff,
+                    "child": child_name,
+                    "notes": "Snack Provided"
+                })
+                st.success(f"Snack logged")
+                rerun()
 
-                new_staff_for_child = st.selectbox(
-                    "Reassign:",
-                    [s for s in STAFF if s],
-                    index=STAFF.index(staff) if staff in STAFF else 0,
-                    key=f"move_{i}"
-                )
-                if st.button(f"Confirm Move", key=f"btn_move_{i}"):
-                    assignments_ref.child(child_id).update({"staff": new_staff_for_child, "child": child_name})
-                    logs_ref.push({
-                        "timestamp": now_timestamp(),
-                        "action": "Move",
-                        "staff": new_staff_for_child,
-                        "child": child_name,
-                        "notes": f"Moved from {staff} to {new_staff_for_child}"
-                    })
-                    st.success(f"Moved to {new_staff_for_child}")
-                    rerun()
+            new_staff_for_child = st.selectbox(
+                "Reassign:",
+                [s for s in STAFF if s],
+                index=STAFF.index(staff) if staff in STAFF else 0,
+                key=f"move_{i}"
+            )
+            if st.button(f"Confirm Move", key=f"btn_move_{i}"):
+                assignments_ref.child(child_id).update({"staff": new_staff_for_child, "child": child_name})
+                logs_ref.push({
+                    "timestamp": now_timestamp(),
+                    "action": "Move",
+                    "staff": new_staff_for_child,
+                    "child": child_name,
+                    "notes": f"Moved from {staff} to {new_staff_for_child}"
+                })
+                st.success(f"Moved to {new_staff_for_child}")
+                rerun()
 
-    # Bulk actions — reads checkboxes already rendered inside expanders above
+    # --- BULK ACTIONS ---
     if rows_with_index:
         st.subheader("⚡ Bulk Actions", divider="gray")
+        all_names = [row["child"] for row in rows_with_index]
+        selected_names = st.multiselect("Select children:", all_names, key="bulk_select")
         selected_ids = [
             (row["id"], row["child"])
-            for i, row in enumerate(rows_with_index)
-            if st.session_state.get(f"bulk_chk_{i}", False)
+            for row in rows_with_index
+            if row["child"] in selected_names
         ]
 
         if selected_ids:
