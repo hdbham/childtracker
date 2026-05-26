@@ -286,25 +286,39 @@ if page == "👩‍🏫 Staff View":
 
     st.markdown("""
 <style>
+/* Toggle button: left-aligned, expander-style */
 [class*="st-key-toggle_"] button {
     background: rgb(240,242,246) !important;
-    border: none !important;
+    border: 1px solid rgba(49,51,63,0.1) !important;
     border-radius: 0.5rem !important;
-    text-align: left !important;
-    justify-content: flex-start !important;
-    padding: 0.6rem 1rem !important;
+    padding: 0.55rem 1rem !important;
     color: inherit !important;
     box-shadow: none !important;
-    font-weight: 600 !important;
     font-size: 0.95rem !important;
     transition: background 0.15s ease !important;
-    margin-bottom: 0 !important;
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+}
+[class*="st-key-toggle_"] button > div {
+    justify-content: flex-start !important;
+    width: 100% !important;
+}
+[class*="st-key-toggle_"] button span {
+    display: flex !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+}
+[class*="st-key-toggle_"] button p {
+    margin: 0 !important;
+    text-align: left !important;
+    font-weight: 600 !important;
 }
 [class*="st-key-toggle_"] button:hover {
     background: rgb(220,225,235) !important;
-    border: none !important;
 }
-[class*="st-key-toggle_"] button p { margin: 0 !important; }
+/* Smooth open animation */
 [data-testid="stVerticalBlockBorderWrapper"] > div {
     animation: fadeSlide 0.15s ease-out;
 }
@@ -312,9 +326,12 @@ if page == "👩‍🏫 Staff View":
     from { opacity: 0; transform: translateY(-4px); }
     to   { opacity: 1; transform: translateY(0); }
 }
-/* Align checkbox vertically with button row */
-[class*="st-key-bulk_chk_"] { padding-top: 0.55rem !important; }
-[class*="st-key-bulk_chk_"] label { display: none !important; }
+/* Checkbox alignment */
+[class*="st-key-bulk_chk_"] {
+    display: flex !important;
+    align-items: center !important;
+    padding-top: 0.4rem !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
