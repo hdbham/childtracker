@@ -329,40 +329,42 @@ if page == "👩‍🏫 Staff View":
     # --- BULK ACTIONS ---
     st.subheader("⚡ Bulk Actions", divider="gray")
 
+    # All children at this site with id lookup
     all_rows = data.to_dict(orient="records")
     all_name_to_id = {r["child"]: r["id"] for r in all_rows}
     all_staff_with_kids = [s for s in STAFF if s and not data[data["staff"] == s].empty]
+    child_to_staff = {r["child"]: r["staff"] for r in all_rows}
 
-    st.markdown("""
-<style>
-[class*="st-key-tree_chk_"] { margin: 0 !important; padding: 0 !important; }
-[class*="st-key-tree_chk_"] label { font-size: 0.9rem !important; }
-</style>""", unsafe_allow_html=True)
+    # Options sorted by staff group so dropdown appears grouped
+    grouped_options = sorted(all_name_to_id.keys(), key=lambda n: (child_to_staff.get(n, ""), n))
 
-    # Tree: staff header → indented checkboxes
-    for s in all_staff_with_kids:
-        group_rows = data[data["staff"] == s].to_dict(orient="records")
-        hcol, acol = st.columns([0.7, 0.3])
-        with hcol:
-            st.markdown(f"**{s}**")
-        with acol:
-            if st.button("All", key=f"tree_all_{s}", use_container_width=True):
-                for gr in group_rows:
-                    st.session_state[f"tree_chk_{gr['id']}"] = True
+    # Group quick-select chips
+    chip_cols = st.columns(len(all_staff_with_kids) + 2)
+    with chip_cols[0]:
+        if st.button("My Group", use_container_width=True):
+            st.session_state["bulk_select"] = [r["child"] for r in rows_with_index]
+            rerun()
+    with chip_cols[1]:
+        if st.button("All", use_container_width=True):
+            st.session_state["bulk_select"] = grouped_options
+            rerun()
+    for idx, s in enumerate(all_staff_with_kids):
+        with chip_cols[idx + 2]:
+            short = s.split()[0] if s else s
+            if st.button(short, key=f"chip_{s}", use_container_width=True):
+                st.session_state["bulk_select"] = list(data[data["staff"] == s]["child"])
                 rerun()
-        for gr in group_rows:
-            _, chk_col = st.columns([0.08, 0.92])
-            with chk_col:
-                st.checkbox(gr["child"], key=f"tree_chk_{gr['id']}")
 
-    selected_ids = [
-        (r["id"], r["child"])
-        for r in all_rows
-        if st.session_state.get(f"tree_chk_{r['id']}", False)
-    ]
+    selected_names = st.multiselect(
+        "Children:",
+        options=grouped_options,
+        format_func=lambda n: f"  {n}  ·  {child_to_staff.get(n, '')}",
+        key="bulk_select",
+        label_visibility="collapsed",
+    )
+    selected_ids = [(all_name_to_id[n], n) for n in selected_names if n in all_name_to_id]
 
     if selected_ids:
-        st.caption(f"{len(selected_ids)} selected")
         bulk_pin = st.text_input("PIN:", type="password", key="bulk_pin")
         col_out, col_move = st.columns(2)
 
