@@ -286,14 +286,12 @@ if page == "👩‍🏫 Staff View":
 
     st.markdown("""
 <style>
-/* Compact child rows — no extra vertical space, tight gaps */
-[data-testid="stHorizontalBlock"]:has([class*="st-key-bulk_chk_"]) {
-    margin-bottom: 0.15rem !important;
-    align-items: center !important;
+/* Align checkbox with expander header */
+[class*="st-key-bulk_chk_"] {
+    padding-top: 0.5rem !important;
 }
-[data-testid="stHorizontalBlock"]:has([class*="st-key-bulk_chk_"]) [data-testid="column"] {
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
+[class*="st-key-bulk_chk_"] p {
+    display: none !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -302,7 +300,7 @@ if page == "👩‍🏫 Staff View":
         child_name = row["child"]
         child_id = row["id"]
 
-        col_exp, col_chk = st.columns([0.88, 0.12], vertical_alignment="center")
+        col_exp, col_chk = st.columns([0.88, 0.12])
         with col_chk:
             st.checkbox("", key=f"bulk_chk_{i}", label_visibility="collapsed")
         with col_exp:
