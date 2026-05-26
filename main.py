@@ -262,6 +262,23 @@ if page == "👩‍🏫 Staff View":
             st.success(f"✅ {selected_action} logged for all")
             rerun()
 
+    st.subheader("➕ Add Child")
+    new_child = st.text_input("Name(s) — separate multiple with commas:", key="new_child_global")
+    if st.button("Add Child"):
+        names = [n.strip() for n in new_child.split(",") if n.strip()]
+        for name in names:
+            assignments_ref.push({"staff": staff, "child": name})
+            logs_ref.push({
+                "timestamp": now_timestamp(),
+                "action": "Add",
+                "staff": staff,
+                "child": name,
+                "notes": "Added"
+            })
+        if names:
+            st.success(f"Added {len(names)} child{'ren' if len(names) != 1 else ''}.")
+            rerun()
+
     st.subheader("Children", divider="gray")
     st.write(f"🏕️ Total in Center: **{len(data)}**")
     st.write(f"🧑‍🏫 Under {staff}: **{len(rows_with_index)}**")
@@ -360,23 +377,6 @@ if page == "👩‍🏫 Staff View":
                         rerun()
                     else:
                         st.error("Incorrect PIN.")
-
-    st.subheader("➕ Add Child")
-    new_child = st.text_input("Name(s) — separate multiple with commas:", key="new_child_global")
-    if st.button("Add Child"):
-        names = [n.strip() for n in new_child.split(",") if n.strip()]
-        for name in names:
-            assignments_ref.push({"staff": staff, "child": name})
-            logs_ref.push({
-                "timestamp": now_timestamp(),
-                "action": "Add",
-                "staff": staff,
-                "child": name,
-                "notes": "Added"
-            })
-        if names:
-            st.success(f"Added {len(names)} child{'ren' if len(names) != 1 else ''}.")
-            rerun()
 
     # --- OTHER STAFF AT THIS CENTER ---
     other_staff = [s for s in STAFF if s and s != staff]
