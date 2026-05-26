@@ -287,9 +287,12 @@ if page == "👩‍🏫 Staff View":
     for i, row in enumerate(rows_with_index):
         child_name = row["child"]
         child_id = row["id"]
-        with st.expander(f"**{child_name}**"):
-            st.checkbox("Select for bulk action", key=f"bulk_chk_{i}")
-            st.write(f"Assigned to: {staff}  |  Location: {new_location}")
+        col_exp, col_chk = st.columns([0.88, 0.12])
+        with col_chk:
+            st.checkbox("", key=f"bulk_chk_{i}", label_visibility="collapsed")
+        with col_exp:
+            with st.expander(f"**{child_name}**"):
+                st.write(f"Assigned to: {staff}  |  Location: {new_location}")
 
             incident_note = st.text_input(f"Incident:", key=f"inc_{i}")
             if st.button(f"Save Incident", key=f"btn_inc_{i}"):
