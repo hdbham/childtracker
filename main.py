@@ -296,7 +296,7 @@ if page == "👩‍🏫 Staff View":
             action_dict = _action_options[category]
             selected_action = st.selectbox("Action", list(action_dict.keys()), key="bulk_act", label_visibility="collapsed")
         with btn_col:
-            if st.button(f"Log {selected_action}", use_container_width=True):
+            if st.button(f"Log {selected_action}", width="stretch"):
                 ts = now_timestamp()
                 for _, child_name in selected_ids:
                     logs_ref.push({"timestamp": ts, "action": selected_action, "staff": staff, "child": child_name, "notes": action_dict[selected_action]})
@@ -308,7 +308,7 @@ if page == "👩‍🏫 Staff View":
         bulk_pin = st.text_input("PIN for sign out / move:", type="password", key="bulk_pin")
         col_out, col_move = st.columns(2)
         with col_out:
-            if st.button("✅ Sign Out", use_container_width=True):
+            if st.button("✅ Sign Out", width="stretch"):
                 if bulk_pin == CHECKOUT_PIN and bulk_pin:
                     for child_id, child_name in selected_ids:
                         assignments_ref.child(child_id).delete()
@@ -319,7 +319,7 @@ if page == "👩‍🏫 Staff View":
                     st.error("Incorrect PIN.")
         with col_move:
             move_to = st.selectbox("Move to:", [s for s in STAFF if s], key="bulk_move_to")
-            if st.button("🔄 Move", use_container_width=True):
+            if st.button("🔄 Move", width="stretch"):
                 if bulk_pin == CHECKOUT_PIN and bulk_pin:
                     for child_id, child_name in selected_ids:
                         assignments_ref.child(child_id).update({"staff": move_to, "child": child_name})
@@ -363,18 +363,18 @@ if page == "👩‍🏫 Staff View":
             c1, c2 = st.columns(2)
             with c1:
                 if in_bathroom:
-                    if st.button("✅ Back", key=f"bath_{i}", use_container_width=True):
+                    if st.button("✅ Back", key=f"bath_{i}", width="stretch"):
                         assignments_ref.child(child_id).update({"bathroom": False})
                         logs_ref.push({"timestamp": now_timestamp(), "action": "BATHROOM_RETURN", "staff": staff, "child": child_name, "notes": "Returned from bathroom"})
                         rerun()
                 else:
-                    if st.button("🚻 Bathroom", key=f"bath_{i}", use_container_width=True):
+                    if st.button("🚻 Bathroom", key=f"bath_{i}", width="stretch"):
                         assignments_ref.child(child_id).update({"bathroom": True})
                         logs_ref.push({"timestamp": now_timestamp(), "action": "BATHROOM", "staff": staff, "child": child_name, "notes": "Bathroom Break"})
                         rerun()
             with c2:
                 new_staff_for_child = st.selectbox("Move to:", [s for s in STAFF if s], index=STAFF.index(staff) if staff in STAFF else 0, key=f"move_{i}", label_visibility="collapsed")
-                if st.button("🔄 Move", key=f"btn_move_{i}", use_container_width=True):
+                if st.button("🔄 Move", key=f"btn_move_{i}", width="stretch"):
                     assignments_ref.child(child_id).update({"staff": new_staff_for_child, "child": child_name})
                     logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": new_staff_for_child, "child": child_name, "notes": f"Moved from {staff} to {new_staff_for_child}"})
                     st.success(f"Moved to {new_staff_for_child}")
@@ -384,7 +384,7 @@ if page == "👩‍🏫 Staff View":
             with inc_col:
                 incident_note = st.text_input("Incident note", placeholder="Describe incident…", key=f"inc_{i}", label_visibility="collapsed")
             with btn_col:
-                if st.button("Log", key=f"btn_inc_{i}", use_container_width=True):
+                if st.button("Log", key=f"btn_inc_{i}", width="stretch"):
                     if incident_note:
                         incidents_ref.push({"timestamp": now_timestamp(), "staff": staff, "child": child_name, "note": incident_note})
                         st.toast("Incident logged")
@@ -411,18 +411,18 @@ if page == "👩‍🏫 Staff View":
                     c1, c2 = st.columns(2)
                     with c1:
                         if oin_bathroom:
-                            if st.button("✅ Back", key=f"obath_{other}_{j}", use_container_width=True):
+                            if st.button("✅ Back", key=f"obath_{other}_{j}", width="stretch"):
                                 assignments_ref.child(ochild_id).update({"bathroom": False})
                                 logs_ref.push({"timestamp": now_timestamp(), "action": "BATHROOM_RETURN", "staff": other, "child": ochild, "notes": "Returned from bathroom"})
                                 rerun()
                         else:
-                            if st.button("🚻 Bathroom", key=f"obath_{other}_{j}", use_container_width=True):
+                            if st.button("🚻 Bathroom", key=f"obath_{other}_{j}", width="stretch"):
                                 assignments_ref.child(ochild_id).update({"bathroom": True})
                                 logs_ref.push({"timestamp": now_timestamp(), "action": "BATHROOM", "staff": other, "child": ochild, "notes": "Bathroom Break"})
                                 rerun()
                     with c2:
                         omove_to = st.selectbox("Move to:", [s for s in STAFF if s], index=STAFF.index(other) if other in STAFF else 0, key=f"omove_{other}_{j}", label_visibility="collapsed")
-                        if st.button("🔄 Move", key=f"obtn_move_{other}_{j}", use_container_width=True):
+                        if st.button("🔄 Move", key=f"obtn_move_{other}_{j}", width="stretch"):
                             assignments_ref.child(ochild_id).update({"staff": omove_to, "child": ochild})
                             logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": omove_to, "child": ochild, "notes": f"Moved from {other} to {omove_to}"})
                             st.success(f"Moved to {omove_to}")
@@ -431,7 +431,7 @@ if page == "👩‍🏫 Staff View":
                     with oinc_col:
                         oinc = st.text_input("Incident note", placeholder="Describe incident…", key=f"oinc_{other}_{j}", label_visibility="collapsed")
                     with obtn_col:
-                        if st.button("Log", key=f"obtn_inc_{other}_{j}", use_container_width=True):
+                        if st.button("Log", key=f"obtn_inc_{other}_{j}", width="stretch"):
                             if oinc:
                                 incidents_ref.push({"timestamp": now_timestamp(), "staff": other, "child": ochild, "note": oinc})
                                 st.toast("Incident logged")
@@ -527,7 +527,7 @@ if page == "📊 Admin View":
         assignments_grouped = assignments_df.groupby("staff").size().reset_index(name="Child Count")
     
         with st.expander("📊 Children Count Per Staff", expanded=True):
-            st.dataframe(assignments_grouped, use_container_width=True)
+            st.dataframe(assignments_grouped, width="stretch")
     
         st.divider()
     
@@ -582,7 +582,7 @@ if page == "📊 Admin View":
             else:
                 st.dataframe(
                     date_filtered_logs.drop(columns=["parsed_timestamp"]),
-                    use_container_width=True,
+                    width="stretch",
                     height=300
                 )
 
@@ -629,7 +629,7 @@ if page == "📊 Admin View":
         log_counts.columns = ["staff", "log_count"]
     
         with st.expander("📈 Log Counts Per Staff", expanded=False):
-            st.dataframe(log_counts, use_container_width=True)
+            st.dataframe(log_counts, width="stretch")
     
     st.divider()
     
@@ -655,7 +655,7 @@ if page == "📊 Admin View":
     
         st.dataframe(
             incidents_df.drop(columns=["parsed_timestamp"]),
-            use_container_width=True,
+            width="stretch",
             height=400
         )
 
@@ -866,8 +866,23 @@ if page == "📅 My Memos" and site == "cfc":
         st.info("No upcoming memos found.")
     else:
         dates = [str(d) for d, _ in upcoming]
-        selected_date_str = st.selectbox("Select a date:", dates)
-        memo_for_date = next(m for d, m in upcoming if str(d) == selected_date_str)
+        if "memo_date_idx" not in st.session_state:
+            st.session_state["memo_date_idx"] = 0
+        idx = min(st.session_state["memo_date_idx"], len(dates) - 1)
+
+        prev_col, date_col, next_col = st.columns([0.2, 0.6, 0.2])
+        with prev_col:
+            if st.button("◀", width="stretch", disabled=idx == 0):
+                st.session_state["memo_date_idx"] = idx - 1
+                rerun()
+        with date_col:
+            st.markdown(f"<div style='text-align:center;font-weight:600;padding-top:0.4rem'>{dates[idx]}</div>", unsafe_allow_html=True)
+        with next_col:
+            if st.button("▶", width="stretch", disabled=idx == len(dates) - 1):
+                st.session_state["memo_date_idx"] = idx + 1
+                rerun()
+
+        memo_for_date = upcoming[idx][1]
         st.divider()
         st.markdown(memo_for_date, unsafe_allow_html=True)
 
