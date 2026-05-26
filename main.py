@@ -284,6 +284,40 @@ if page == "👩‍🏫 Staff View":
     st.write(f"🧑‍🏫 Under {staff}: **{len(rows_with_index)}**")
 
 
+    st.markdown("""
+<style>
+[class*="st-key-toggle_"] button {
+    background: rgb(240,242,246) !important;
+    border: none !important;
+    border-radius: 0.5rem !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+    padding: 0.6rem 1rem !important;
+    color: inherit !important;
+    box-shadow: none !important;
+    font-weight: 600 !important;
+    font-size: 0.95rem !important;
+    transition: background 0.15s ease !important;
+    margin-bottom: 0 !important;
+}
+[class*="st-key-toggle_"] button:hover {
+    background: rgb(220,225,235) !important;
+    border: none !important;
+}
+[class*="st-key-toggle_"] button p { margin: 0 !important; }
+[data-testid="stVerticalBlockBorderWrapper"] > div {
+    animation: fadeSlide 0.15s ease-out;
+}
+@keyframes fadeSlide {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+/* Align checkbox vertically with button row */
+[class*="st-key-bulk_chk_"] { padding-top: 0.55rem !important; }
+[class*="st-key-bulk_chk_"] label { display: none !important; }
+</style>
+""", unsafe_allow_html=True)
+
     for i, row in enumerate(rows_with_index):
         child_name = row["child"]
         child_id = row["id"]
@@ -291,11 +325,10 @@ if page == "👩‍🏫 Staff View":
         if open_key not in st.session_state:
             st.session_state[open_key] = False
 
-        # Header row: toggle button + checkbox
-        col_toggle, col_chk = st.columns([0.88, 0.12])
+        arrow = "▾" if st.session_state[open_key] else "▸"
+        col_toggle, col_chk = st.columns([0.91, 0.09])
         with col_toggle:
-            arrow = "▾" if st.session_state[open_key] else "▸"
-            if st.button(f"{arrow} **{child_name}**", key=f"toggle_{i}", use_container_width=True):
+            if st.button(f"{arrow}  {child_name}", key=f"toggle_{i}", use_container_width=True):
                 st.session_state[open_key] = not st.session_state[open_key]
                 rerun()
         with col_chk:
