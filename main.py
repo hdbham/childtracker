@@ -286,39 +286,40 @@ if page == "👩‍🏫 Staff View":
 
     st.markdown("""
 <style>
-/* Toggle button: left-aligned, expander-style */
+/* Toggle button — matches native expander, auto light/dark via CSS vars */
 [class*="st-key-toggle_"] button {
-    background: rgb(240,242,246) !important;
-    border: 1px solid rgba(49,51,63,0.1) !important;
+    background: var(--secondary-background-color) !important;
+    border: 1px solid rgba(128,128,128,0.15) !important;
     border-radius: 0.5rem !important;
     padding: 0.55rem 1rem !important;
-    color: inherit !important;
+    color: var(--text-color) !important;
     box-shadow: none !important;
     font-size: 0.95rem !important;
-    transition: background 0.15s ease !important;
+    transition: filter 0.15s ease, background 0.15s ease !important;
     width: 100% !important;
     display: flex !important;
     align-items: center !important;
     justify-content: flex-start !important;
 }
-[class*="st-key-toggle_"] button > div {
-    justify-content: flex-start !important;
-    width: 100% !important;
-}
+[class*="st-key-toggle_"] button > div,
 [class*="st-key-toggle_"] button span {
-    display: flex !important;
     justify-content: flex-start !important;
     width: 100% !important;
+    display: flex !important;
 }
 [class*="st-key-toggle_"] button p {
     margin: 0 !important;
     text-align: left !important;
     font-weight: 600 !important;
+    color: var(--text-color) !important;
 }
 [class*="st-key-toggle_"] button:hover {
-    background: rgb(220,225,235) !important;
+    filter: brightness(0.94) !important;
 }
-/* Smooth open animation */
+[data-theme="dark"] [class*="st-key-toggle_"] button:hover {
+    filter: brightness(1.12) !important;
+}
+/* Smooth open */
 [data-testid="stVerticalBlockBorderWrapper"] > div {
     animation: fadeSlide 0.15s ease-out;
 }
@@ -326,7 +327,7 @@ if page == "👩‍🏫 Staff View":
     from { opacity: 0; transform: translateY(-4px); }
     to   { opacity: 1; transform: translateY(0); }
 }
-/* Checkbox alignment */
+/* Checkbox vertical alignment */
 [class*="st-key-bulk_chk_"] {
     display: flex !important;
     align-items: center !important;
