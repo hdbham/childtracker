@@ -335,10 +335,22 @@ if page == "👩‍🏫 Staff View":
     all_staff_with_kids = [s for s in STAFF if s and not data[data["staff"] == s].empty]
     child_to_staff = {r["child"]: r["staff"] for r in all_rows}
 
-    # Options sorted by staff group so dropdown appears grouped
-    grouped_options = sorted(all_name_to_id.keys(), key=lambda n: (child_to_staff.get(n, ""), n))
+    # Build grouped options list: divider tokens + child names interleaved
+    DIVIDER_PREFIX = "§div§"
+    grouped_options = []
+    all_child_names = []
+    for s in all_staff_with_kids:
+        grouped_options.append(f"{DIVIDER_PREFIX}{s}")
+        children = list(data[data["staff"] == s]["child"])
+        grouped_options.extend(children)
+        all_child_names.extend(children)
 
-    # Group quick-select chips
+    def _fmt(opt):
+        if opt.startswith(DIVIDER_PREFIX):
+            return f"── {opt[len(DIVIDER_PREFIX):]} ──"
+        return f"  {opt}"
+
+    # Chips
     chip_cols = st.columns(len(all_staff_with_kids) + 2)
     with chip_cols[0]:
         if st.button("My Group", use_container_width=True):
@@ -346,22 +358,23 @@ if page == "👩‍🏫 Staff View":
             rerun()
     with chip_cols[1]:
         if st.button("All", use_container_width=True):
-            st.session_state["bulk_select"] = grouped_options
+            st.session_state["bulk_select"] = all_child_names
             rerun()
     for idx, s in enumerate(all_staff_with_kids):
         with chip_cols[idx + 2]:
-            short = s.split()[0] if s else s
-            if st.button(short, key=f"chip_{s}", use_container_width=True):
+            if st.button(s.split()[0], key=f"chip_{s}", use_container_width=True):
                 st.session_state["bulk_select"] = list(data[data["staff"] == s]["child"])
                 rerun()
 
-    selected_names = st.multiselect(
+    selected_raw = st.multiselect(
         "Children:",
         options=grouped_options,
-        format_func=lambda n: f"  {n}  ·  {child_to_staff.get(n, '')}",
+        format_func=_fmt,
         key="bulk_select",
         label_visibility="collapsed",
     )
+    # Filter out any accidentally-selected dividers
+    selected_names = [n for n in selected_raw if not n.startswith(DIVIDER_PREFIX)]
     selected_ids = [(all_name_to_id[n], n) for n in selected_names if n in all_name_to_id]
 
     if selected_ids:
