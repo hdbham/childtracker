@@ -291,12 +291,11 @@ if page == "👩‍🏫 Staff View":
         with st.expander(child_name):
             st.caption(f"📍 {new_location}")
 
-            # Quick actions row
             c1, c2 = st.columns(2)
             with c1:
-                if st.button("🍎 Snack", key=f"snack_{i}", use_container_width=True):
-                    logs_ref.push({"timestamp": now_timestamp(), "action": "SNACK", "staff": staff, "child": child_name, "notes": "Snack Provided"})
-                    st.toast(f"Snack logged for {child_name}")
+                if st.button("🚻 Bathroom", key=f"bath_{i}", use_container_width=True):
+                    logs_ref.push({"timestamp": now_timestamp(), "action": "BATHROOM", "staff": staff, "child": child_name, "notes": "Bathroom Break"})
+                    st.toast(f"Bathroom logged for {child_name}")
                     rerun()
             with c2:
                 new_staff_for_child = st.selectbox("Move to:", [s for s in STAFF if s], index=STAFF.index(staff) if staff in STAFF else 0, key=f"move_{i}", label_visibility="collapsed")
@@ -306,7 +305,6 @@ if page == "👩‍🏫 Staff View":
                     st.success(f"Moved to {new_staff_for_child}")
                     rerun()
 
-            # Incident — inline
             inc_col, btn_col = st.columns([0.78, 0.22])
             with inc_col:
                 incident_note = st.text_input("Incident note", placeholder="Describe incident…", key=f"inc_{i}", label_visibility="collapsed")
@@ -323,7 +321,15 @@ if page == "👩‍🏫 Staff View":
     if rows_with_index:
         st.subheader("⚡ Bulk Actions", divider="gray")
         all_names = [row["child"] for row in rows_with_index]
-        selected_names = st.multiselect("Select children:", all_names, key="bulk_select")
+
+        sel_col, all_col = st.columns([0.7, 0.3])
+        with sel_col:
+            selected_names = st.multiselect("Select children:", all_names, key="bulk_select", label_visibility="collapsed")
+        with all_col:
+            if st.button("Select All", use_container_width=True):
+                st.session_state["bulk_select"] = all_names
+                rerun()
+
         selected_ids = [
             (row["id"], row["child"])
             for row in rows_with_index
@@ -335,17 +341,11 @@ if page == "👩‍🏫 Staff View":
             col_out, col_move = st.columns(2)
 
             with col_out:
-                if st.button("✅ Sign Out"):
+                if st.button("✅ Sign Out", use_container_width=True):
                     if bulk_pin == CHECKOUT_PIN:
                         for child_id, child_name in selected_ids:
                             assignments_ref.child(child_id).delete()
-                            logs_ref.push({
-                                "timestamp": now_timestamp(),
-                                "action": "Checkout",
-                                "staff": staff,
-                                "child": child_name,
-                                "notes": "Child Checked Out"
-                            })
+                            logs_ref.push({"timestamp": now_timestamp(), "action": "Checkout", "staff": staff, "child": child_name, "notes": "Child Checked Out"})
                         st.success(f"Signed out {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'}.")
                         rerun()
                     else:
@@ -353,17 +353,11 @@ if page == "👩‍🏫 Staff View":
 
             with col_move:
                 move_to = st.selectbox("Move to:", [s for s in STAFF if s], key="bulk_move_to")
-                if st.button("🔄 Move"):
+                if st.button("🔄 Move", use_container_width=True):
                     if bulk_pin == CHECKOUT_PIN:
                         for child_id, child_name in selected_ids:
                             assignments_ref.child(child_id).update({"staff": move_to, "child": child_name})
-                            logs_ref.push({
-                                "timestamp": now_timestamp(),
-                                "action": "Move",
-                                "staff": move_to,
-                                "child": child_name,
-                                "notes": f"Bulk moved from {staff} to {move_to}"
-                            })
+                            logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": move_to, "child": child_name, "notes": f"Bulk moved from {staff} to {move_to}"})
                         st.success(f"Moved {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'} to {move_to}.")
                         rerun()
                     else:
@@ -375,12 +369,39 @@ if page == "👩‍🏫 Staff View":
         st.divider()
         st.subheader("👥 Rest of Center", divider="gray")
         for other in other_staff:
+            other_loc = staff_lookup.get(other, "N/A")
             other_rows = data[data["staff"] == other].to_dict(orient="records")
             st.markdown(f"**{other}** — {len(other_rows)} children")
-            if other_rows:
-                for row in other_rows:
-                    st.markdown(f"&nbsp;&nbsp;&nbsp;• {row['child']}")
-            else:
+            for j, orow in enumerate(other_rows):
+                ochild = orow["child"]
+                ochild_id = orow["id"]
+                with st.expander(ochild):
+                    st.caption(f"📍 {other_loc}")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        if st.button("🚻 Bathroom", key=f"obath_{other}_{j}", use_container_width=True):
+                            logs_ref.push({"timestamp": now_timestamp(), "action": "BATHROOM", "staff": other, "child": ochild, "notes": "Bathroom Break"})
+                            st.toast(f"Bathroom logged for {ochild}")
+                            rerun()
+                    with c2:
+                        omove_to = st.selectbox("Move to:", [s for s in STAFF if s], index=STAFF.index(other) if other in STAFF else 0, key=f"omove_{other}_{j}", label_visibility="collapsed")
+                        if st.button("🔄 Move", key=f"obtn_move_{other}_{j}", use_container_width=True):
+                            assignments_ref.child(ochild_id).update({"staff": omove_to, "child": ochild})
+                            logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": omove_to, "child": ochild, "notes": f"Moved from {other} to {omove_to}"})
+                            st.success(f"Moved to {omove_to}")
+                            rerun()
+                    oinc_col, obtn_col = st.columns([0.78, 0.22])
+                    with oinc_col:
+                        oinc = st.text_input("Incident note", placeholder="Describe incident…", key=f"oinc_{other}_{j}", label_visibility="collapsed")
+                    with obtn_col:
+                        if st.button("Log", key=f"obtn_inc_{other}_{j}", use_container_width=True):
+                            if oinc:
+                                incidents_ref.push({"timestamp": now_timestamp(), "staff": other, "child": ochild, "note": oinc})
+                                st.toast("Incident logged")
+                                rerun()
+                            else:
+                                st.warning("Enter a note first.")
+            if not other_rows:
                 st.caption("No children assigned")
 
     with st.expander("🔄 Shift Change - Bulk Move"):
