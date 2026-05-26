@@ -370,6 +370,20 @@ if page == "👩‍🏫 Staff View":
             st.success(f"Added {len(names)} child{'ren' if len(names) != 1 else ''}.")
             st.rerun()
 
+    # --- OTHER STAFF AT THIS CENTER ---
+    other_staff = [s for s in STAFF if s and s != staff]
+    if other_staff:
+        st.divider()
+        st.subheader("👥 Rest of Center", divider="gray")
+        for other in other_staff:
+            other_rows = data[data["staff"] == other].to_dict(orient="records")
+            st.markdown(f"**{other}** — {len(other_rows)} children")
+            if other_rows:
+                for row in other_rows:
+                    st.markdown(f"&nbsp;&nbsp;&nbsp;• {row['child']}")
+            else:
+                st.caption("No children assigned")
+
     with st.expander("🔄 Shift Change - Bulk Move"):
         col1, col2 = st.columns(2)
         with col1:
