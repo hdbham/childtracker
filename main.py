@@ -129,6 +129,11 @@ def safe_write(fn):
     except Exception as e:
         st.error(f"⚠️ Save failed — try again. ({e})")
 
+def rerun():
+    """Clear cache then rerun so mutations are always visible immediately."""
+    st.cache_data.clear()
+    st.rerun()
+
 # --- NEW DAY PROMPT ---
 _today = datetime.datetime.now(MT).date().isoformat()
 try:
@@ -150,7 +155,7 @@ if _last_cleared != _today:
                 "notes": f"Assignments cleared for {_today}"
             })
         safe_write(_clear)
-        st.rerun()
+        rerun()
 
 # --- LOAD STAFF DATA ---
 staff_data_raw = fetch_staff()
@@ -211,7 +216,7 @@ if page == "👩‍🏫 Staff View":
                     "notes": f"Updated location to {new_location}"
                 })
                 break
-        st.rerun()
+        rerun()
 
     staff_assignments = data[data["staff"] == staff]
     rows_with_index = staff_assignments.to_dict(orient="records")
@@ -255,7 +260,7 @@ if page == "👩‍🏫 Staff View":
                     "notes": action_dict[selected_action]
                 })
             st.success(f"✅ {selected_action} logged for all")
-            st.rerun()
+            rerun()
 
     st.subheader("Children", divider="gray")
     st.write(f"🏕️ Total in Center: **{len(data)}**")
@@ -277,7 +282,7 @@ if page == "👩‍🏫 Staff View":
                     "note": incident_note
                 })
                 st.success("Incident logged!")
-                st.rerun()
+                rerun()
 
             if st.button(f"Snack ✅", key=f"snack_{i}"):
                 logs_ref.push({
@@ -288,7 +293,7 @@ if page == "👩‍🏫 Staff View":
                     "notes": "Snack Provided"
                 })
                 st.success(f"Snack logged")
-                st.rerun()
+                rerun()
 
             new_staff_for_child = st.selectbox(
                 "Reassign:",
@@ -306,7 +311,7 @@ if page == "👩‍🏫 Staff View":
                     "notes": f"Moved from {staff} to {new_staff_for_child}"
                 })
                 st.success(f"Moved to {new_staff_for_child}")
-                st.rerun()
+                rerun()
 
     # Bulk actions
     if rows_with_index:
@@ -333,7 +338,7 @@ if page == "👩‍🏫 Staff View":
                                 "notes": "Child Checked Out"
                             })
                         st.success(f"Signed out {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'}.")
-                        st.rerun()
+                        rerun()
                     else:
                         st.error("Incorrect PIN.")
 
@@ -351,7 +356,7 @@ if page == "👩‍🏫 Staff View":
                                 "notes": f"Bulk moved from {staff} to {move_to}"
                             })
                         st.success(f"Moved {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'} to {move_to}.")
-                        st.rerun()
+                        rerun()
                     else:
                         st.error("Incorrect PIN.")
 
@@ -370,7 +375,7 @@ if page == "👩‍🏫 Staff View":
             })
         if names:
             st.success(f"Added {len(names)} child{'ren' if len(names) != 1 else ''}.")
-            st.rerun()
+            rerun()
 
     # --- OTHER STAFF AT THIS CENTER ---
     other_staff = [s for s in STAFF if s and s != staff]
@@ -410,7 +415,7 @@ if page == "👩‍🏫 Staff View":
                 })
                 count += 1
             st.success(f"Moved {count} children.")
-            st.rerun()
+            rerun()
 
 
 
@@ -474,7 +479,7 @@ if page == "📊 Admin View":
                     st.session_state.confirm_remove_all_1 = False
                     st.session_state.confirm_remove_all_2 = False
                     st.success("✅ All children have been removed")
-                    st.rerun()
+                    rerun()
             with col2:
                 if st.button("Cancel Action"):
                     st.session_state.confirm_remove_all_1 = False
@@ -645,7 +650,7 @@ if page == "📊 Admin View":
             if new_staff_name.strip():
                 staff_ref.push({"name": new_staff_name.strip(), "location": new_staff_location.strip() or "N/A"})
                 st.success(f"Added {new_staff_name}")
-                st.rerun()
+                rerun()
 
     with col_remove:
         st.subheader("➖ Remove Staff")
@@ -671,7 +676,7 @@ if page == "📊 Admin View":
                     })
                     del st.session_state["confirm_remove_staff"]
                     st.success(f"Removed {remove_name}")
-                    st.rerun()
+                    rerun()
             with c2:
                 if st.button("Cancel", key="rm_staff_no"):
                     del st.session_state["confirm_remove_staff"]
@@ -746,14 +751,14 @@ if page == "📊 Admin View":
                     payload = {"staff": staff_member, "date": memo_edit_date.isoformat(), "memo": safe_memo}
                     (memos_ref.child(existing_key).update if existing_key else memos_ref.push)(payload)
                 st.success(f"✅ Memo pushed to all staff for {memo_edit_date}")
-                st.rerun()
+                rerun()
 
             if master_memo_id and st.button("🗑️ Delete Memo for All Staff"):
                 for k, v in memos_data_admin.items():
                     if v.get("date") == memo_edit_date.isoformat():
                         memos_ref.child(k).delete()
                 st.success("✅ Memo deleted for all staff")
-                st.rerun()
+                rerun()
 
         with col2:
             st.markdown("### Preview:")
@@ -782,7 +787,7 @@ if page == "📊 Admin View":
                     "url": blob.public_url
                 })
             st.success(f"✅ {len(uploaded_pdfs)} file(s) uploaded")
-            st.rerun()
+            rerun()
 
         all_files = fetch_files()
         if all_files:
@@ -803,7 +808,7 @@ if page == "📊 Admin View":
                                 bucket = storage.bucket()
                                 bucket.blob(f"camp/{d}/{f['name']}").delete()
                                 files_ref.child(f["key"]).delete()
-                                st.rerun()
+                                rerun()
 
 
 # MY MEMOS
