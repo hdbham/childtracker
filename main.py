@@ -176,7 +176,10 @@ data = pd.DataFrame(rows, columns=["id", "staff", "child"])
 
 #test
 # --- PAGE NAVIGATION ---
-page = st.sidebar.radio("📂 Navigate", ["👩‍🏫 Staff View", "📊 Admin View", "📅 My Memos", "📁 Resources"])
+_nav = ["👩‍🏫 Staff View", "📊 Admin View"]
+if site == "cfc":
+    _nav += ["📅 My Memos", "📁 Resources"]
+page = st.sidebar.radio("📂 Navigate", _nav)
 
 # STAFF VIEW
 if page == "👩‍🏫 Staff View":
@@ -192,7 +195,7 @@ if page == "👩‍🏫 Staff View":
             todays_memo = v.get("memo", "")
             break
 
-    if todays_memo:
+    if todays_memo and site == "cfc":
         with st.sidebar:
             st.divider()
             st.markdown("### 📋 Today's Memo")
@@ -708,97 +711,96 @@ if page == "📊 Admin View":
 
     st.divider()
 
-    # Memo Editing
-    st.header("📝 Memo Editor", divider="gray")
+    if site == "cfc":
+        # Memo Editing
+        st.header("📝 Memo Editor", divider="gray")
 
-    memo_edit_date = st.date_input("Date", datetime.datetime.now(MT).date(), key="admin_memo_date")
-    memos_data_admin = fetch_memos()
+        memo_edit_date = st.date_input("Date", datetime.datetime.now(MT).date(), key="admin_memo_date")
+        memos_data_admin = fetch_memos()
 
-    # Load Hunter's memo for that date as the master
-    master_memo_id, master_memo_text = None, ""
-    for k, v in memos_data_admin.items():
-        if v.get("staff") == "Hunter" and v.get("date") == memo_edit_date.isoformat():
-            master_memo_id, master_memo_text = k, v.get("memo", "")
-            break
+        master_memo_id, master_memo_text = None, ""
+        for k, v in memos_data_admin.items():
+            if v.get("staff") == "Hunter" and v.get("date") == memo_edit_date.isoformat():
+                master_memo_id, master_memo_text = k, v.get("memo", "")
+                break
 
-    col1, col2 = st.columns(2)
-    with col1:
-        edited_memo = st.text_area("Memo Content:", value=master_memo_text, height=500, key="admin_memo_text")
+        col1, col2 = st.columns(2)
+        with col1:
+            edited_memo = st.text_area("Memo Content:", value=master_memo_text, height=500, key="admin_memo_text")
 
-        if st.button("💾 Save & Push to All Staff"):
-            safe_memo = edited_memo.replace("\r\n", "\n")
-            for staff_member in [s for s in STAFF if s]:
-                existing_key = next(
-                    (k for k, v in memos_data_admin.items()
-                     if v.get("staff") == staff_member and v.get("date") == memo_edit_date.isoformat()),
-                    None
-                )
-                payload = {"staff": staff_member, "date": memo_edit_date.isoformat(), "memo": safe_memo}
-                (memos_ref.child(existing_key).update if existing_key else memos_ref.push)(payload)
-            st.success(f"✅ Memo pushed to all staff for {memo_edit_date}")
+            if st.button("💾 Save & Push to All Staff"):
+                safe_memo = edited_memo.replace("\r\n", "\n")
+                for staff_member in [s for s in STAFF if s]:
+                    existing_key = next(
+                        (k for k, v in memos_data_admin.items()
+                         if v.get("staff") == staff_member and v.get("date") == memo_edit_date.isoformat()),
+                        None
+                    )
+                    payload = {"staff": staff_member, "date": memo_edit_date.isoformat(), "memo": safe_memo}
+                    (memos_ref.child(existing_key).update if existing_key else memos_ref.push)(payload)
+                st.success(f"✅ Memo pushed to all staff for {memo_edit_date}")
+                st.rerun()
+
+            if master_memo_id and st.button("🗑️ Delete Memo for All Staff"):
+                for k, v in memos_data_admin.items():
+                    if v.get("date") == memo_edit_date.isoformat():
+                        memos_ref.child(k).delete()
+                st.success("✅ Memo deleted for all staff")
+                st.rerun()
+
+        with col2:
+            st.markdown("### Preview:")
+            st.markdown(edited_memo or "*No content yet...*", unsafe_allow_html=True)
+
+        st.divider()
+
+        # PDF File Manager
+        st.header("📁 File Manager", divider="gray")
+
+        upload_date = st.date_input("Date these files belong to:", datetime.datetime.now(MT).date(), key="upload_date")
+        upload_label = st.text_input("Label / Session (e.g. Week 1 — Extreme Earth):", key="upload_label")
+        uploaded_pdfs = st.file_uploader("Upload PDFs", type=["pdf"], accept_multiple_files=True, key="pdf_uploader")
+
+        if uploaded_pdfs and st.button("⬆️ Upload Files"):
+            bucket = storage.bucket()
+            for f in uploaded_pdfs:
+                path = f"camp/{upload_date.isoformat()}/{f.name}"
+                blob = bucket.blob(path)
+                blob.upload_from_file(f, content_type="application/pdf")
+                blob.make_public()
+                files_ref.push({
+                    "date": upload_date.isoformat(),
+                    "label": upload_label.strip() or upload_date.isoformat(),
+                    "name": f.name,
+                    "url": blob.public_url
+                })
+            st.success(f"✅ {len(uploaded_pdfs)} file(s) uploaded")
             st.rerun()
 
-        if master_memo_id and st.button("🗑️ Delete Memo for All Staff"):
-            for k, v in memos_data_admin.items():
-                if v.get("date") == memo_edit_date.isoformat():
-                    memos_ref.child(k).delete()
-            st.success("✅ Memo deleted for all staff")
-            st.rerun()
+        all_files = fetch_files()
+        if all_files:
+            st.subheader("Uploaded Files")
+            files_by_date = {}
+            for k, v in all_files.items():
+                d = v.get("date", "Unknown")
+                files_by_date.setdefault(d, []).append({**v, "key": k})
 
-    with col2:
-        st.markdown("### Preview:")
-        st.markdown(edited_memo or "*No content yet...*", unsafe_allow_html=True)
-
-    st.divider()
-
-    # PDF File Manager
-    st.header("📁 File Manager", divider="gray")
-
-    upload_date = st.date_input("Date these files belong to:", datetime.datetime.now(MT).date(), key="upload_date")
-    upload_label = st.text_input("Label / Session (e.g. Week 1 — Extreme Earth):", key="upload_label")
-    uploaded_pdfs = st.file_uploader("Upload PDFs", type=["pdf"], accept_multiple_files=True, key="pdf_uploader")
-
-    if uploaded_pdfs and st.button("⬆️ Upload Files"):
-        bucket = storage.bucket()
-        for f in uploaded_pdfs:
-            path = f"camp/{upload_date.isoformat()}/{f.name}"
-            blob = bucket.blob(path)
-            blob.upload_from_file(f, content_type="application/pdf")
-            blob.make_public()
-            files_ref.push({
-                "date": upload_date.isoformat(),
-                "label": upload_label.strip() or upload_date.isoformat(),
-                "name": f.name,
-                "url": blob.public_url
-            })
-        st.success(f"✅ {len(uploaded_pdfs)} file(s) uploaded")
-        st.rerun()
-
-    # List existing files
-    all_files = fetch_files()
-    if all_files:
-        st.subheader("Uploaded Files")
-        files_by_date = {}
-        for k, v in all_files.items():
-            d = v.get("date", "Unknown")
-            files_by_date.setdefault(d, []).append({**v, "key": k})
-
-        for d in sorted(files_by_date.keys(), reverse=True):
-            with st.expander(f"📅 {d} — {files_by_date[d][0].get('label', '')}"):
-                for f in files_by_date[d]:
-                    col_a, col_b = st.columns([4, 1])
-                    with col_a:
-                        st.markdown(f"📄 [{f['name']}]({f['url']})")
-                    with col_b:
-                        if st.button("🗑️", key=f"del_{f['key']}"):
-                            bucket = storage.bucket()
-                            bucket.blob(f"camp/{d}/{f['name']}").delete()
-                            files_ref.child(f["key"]).delete()
-                            st.rerun()
+            for d in sorted(files_by_date.keys(), reverse=True):
+                with st.expander(f"📅 {d} — {files_by_date[d][0].get('label', '')}"):
+                    for f in files_by_date[d]:
+                        col_a, col_b = st.columns([4, 1])
+                        with col_a:
+                            st.markdown(f"📄 [{f['name']}]({f['url']})")
+                        with col_b:
+                            if st.button("🗑️", key=f"del_{f['key']}"):
+                                bucket = storage.bucket()
+                                bucket.blob(f"camp/{d}/{f['name']}").delete()
+                                files_ref.child(f["key"]).delete()
+                                st.rerun()
 
 
 # MY MEMOS
-if page == "📅 My Memos":
+if page == "📅 My Memos" and site == "cfc":
     st.title("📅 My Memos")
 
     selected_staff = st.selectbox("Who are you?", [""] + STAFF)
@@ -833,7 +835,7 @@ if page == "📅 My Memos":
 
 
 # RESOURCES
-if page == "📁 Resources":
+if page == "📁 Resources" and site == "cfc":
     st.title("📁 Resources")
 
     all_files = fetch_files()
