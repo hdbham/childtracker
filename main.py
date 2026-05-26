@@ -149,16 +149,8 @@ if _last_cleared != _today:
         safe_write(_clear)
         st.rerun()
 
-# --- DEFAULT STAFF ---
-default_staff_list = ["Fernando", "Leticia", "Kayleece", "Daegon", "Ali", "Hunter", "Melissa"]
-staff_data_raw = fetch_staff()
-if not staff_data_raw:
-    for name in default_staff_list:
-        staff_ref.push({"name": name, "location": "N/A"})
-    st.cache_data.clear()
-    staff_data_raw = fetch_staff()
-
 # --- LOAD STAFF DATA ---
+staff_data_raw = fetch_staff()
 staff_lookup = {v["name"]: v.get("location", "N/A") for v in staff_data_raw.values() if "name" in v}
 STAFF = list(staff_lookup.keys())
 STAFF.insert(0, "")
