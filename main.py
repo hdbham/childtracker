@@ -185,6 +185,7 @@ data = pd.DataFrame(rows, columns=["id", "staff", "child", "bathroom"])
 _nav = ["👩‍🏫 Staff View", "📊 Admin View"]
 if site == "cfc":
     _nav += ["📅 My Memos", "📁 Resources"]
+_nav += ["ℹ️ How to Use"]
 page = st.sidebar.radio("📂 Navigate", _nav)
 
 # STAFF VIEW
@@ -914,3 +915,64 @@ if page == "📁 Resources" and site == "cfc":
                     for f in past[d]:
                         st.markdown(f"📄 [{f['name']}]({f['url']})")
 
+
+
+# HOW TO USE
+if page == "ℹ️ How to Use":
+    st.title("ℹ️ How to Use SDC Manager")
+
+    st.markdown("---")
+
+    with st.expander("👩‍🏫 Staff View", expanded=True):
+        st.markdown("""
+**Your home base.** Select your name at the top to load your group.
+
+- **Location** — Keep this updated at all times so admin can see where your group is.
+- **Bulk Actions** — Select children by group or individually to log care actions, sign out, or move as a group. Tap a staff name in the dropdown to load their whole group at once.
+- **Add Child** — Type one name or multiple comma-separated names to add children to your group.
+- **Children** — Each child is an expander. Tap to open actions:
+  - 🚻 **Bathroom** — flags the child with a toilet icon until marked Back
+  - 🔄 **Move** — reassign to another staff member
+  - **Log** — record an incident note
+- **Rest of Center** — collapsed view of all other staff and their children. Tap to expand and take actions on any child.
+- **Bulk Actions** — at the bottom. Select children from any group, log care/activity events without a PIN, or sign out / move with PIN `••••`.
+""")
+
+    with st.expander("⚡ Bulk Actions detail"):
+        st.markdown("""
+- Tap **`── Staff Name ──`** in the dropdown to instantly load that staff's children
+- Mix and match children from any group
+- **Care / Activity** actions (Ate, Hydration, Sunscreen, STEM, etc.) log immediately — no PIN needed
+- **Sign Out** and **Move** require the checkout PIN
+""")
+
+    with st.expander("📊 Admin View"):
+        st.markdown("""
+Requires Admin PIN.
+
+- View all staff, assignments, logs, and incidents
+- Edit staff roster
+- Emergency: remove all children
+- Review incident history
+""")
+
+    with st.expander("📅 My Memos"):
+        st.markdown("""
+Daily memos written by the director. Navigate with **◀ ▶** buttons to browse upcoming days.
+Memos also appear in the sidebar of Staff View on the day they're active.
+""")
+
+    with st.expander("📁 Resources"):
+        st.markdown("""
+Activity PDFs organized by camp day. Tap a date to expand and download materials for that day.
+""")
+
+    with st.expander("🔑 PINs & Access"):
+        st.markdown("""
+- **Checkout PIN** — required for bulk sign out and bulk move
+- **Admin PIN** — required to access Admin View
+- Contact your director if you don't have these
+""")
+
+    st.divider()
+    st.caption("SDC Manager · Built for Ogden SDC · Questions? Contact Hunter")
