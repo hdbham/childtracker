@@ -300,23 +300,28 @@ if page == "👩‍🏫 Staff View":
         # Sign out / Move — PIN required
         st.divider()
         bulk_pin = st.text_input("PIN for sign out / move:", type="password", key="bulk_pin")
-        pin_ok = len(bulk_pin) > 0 and bulk_pin.strip() == str(CHECKOUT_PIN).strip()
         col_out, col_move = st.columns(2)
         with col_out:
-            if st.button("✅ Sign Out", use_container_width=True, disabled=not pin_ok):
-                for child_id, child_name in selected_ids:
-                    assignments_ref.child(child_id).delete()
-                    logs_ref.push({"timestamp": now_timestamp(), "action": "Checkout", "staff": staff, "child": child_name, "notes": "Child Checked Out"})
-                st.success(f"Signed out {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'}.")
-                rerun()
+            if st.button("✅ Sign Out", use_container_width=True):
+                if bulk_pin == CHECKOUT_PIN and bulk_pin:
+                    for child_id, child_name in selected_ids:
+                        assignments_ref.child(child_id).delete()
+                        logs_ref.push({"timestamp": now_timestamp(), "action": "Checkout", "staff": staff, "child": child_name, "notes": "Child Checked Out"})
+                    st.success(f"Signed out {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'}.")
+                    rerun()
+                else:
+                    st.error("Incorrect PIN.")
         with col_move:
             move_to = st.selectbox("Move to:", [s for s in STAFF if s], key="bulk_move_to")
-            if st.button("🔄 Move", use_container_width=True, disabled=not pin_ok):
-                for child_id, child_name in selected_ids:
-                    assignments_ref.child(child_id).update({"staff": move_to, "child": child_name})
-                    logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": move_to, "child": child_name, "notes": f"Bulk moved to {move_to}"})
-                st.success(f"Moved {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'} to {move_to}.")
-                rerun()
+            if st.button("🔄 Move", use_container_width=True):
+                if bulk_pin == CHECKOUT_PIN and bulk_pin:
+                    for child_id, child_name in selected_ids:
+                        assignments_ref.child(child_id).update({"staff": move_to, "child": child_name})
+                        logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": move_to, "child": child_name, "notes": f"Bulk moved to {move_to}"})
+                    st.success(f"Moved {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'} to {move_to}.")
+                    rerun()
+                else:
+                    st.error("Incorrect PIN.")
 
     st.subheader("➕ Add Child")
     new_child = st.text_input("Name(s) — separate multiple with commas:", key="new_child_global")
