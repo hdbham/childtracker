@@ -286,21 +286,12 @@ if page == "👩‍🏫 Staff View":
 
     st.markdown("""
 <style>
-/* Align checkbox with expander header, prevent overflow */
+/* Align checkbox with expander header */
 [class*="st-key-bulk_chk_"] {
-    display: flex !important;
-    align-items: center !important;
-    padding-top: 0.55rem !important;
-    justify-content: center !important;
-    overflow: hidden !important;
-    min-width: 0 !important;
+    padding-top: 0.5rem !important;
 }
-[class*="st-key-bulk_chk_"] label {
+[class*="st-key-bulk_chk_"] p {
     display: none !important;
-}
-[class*="st-key-bulk_chk_"] > div {
-    min-width: 0 !important;
-    padding: 0 !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -309,7 +300,7 @@ if page == "👩‍🏫 Staff View":
         child_name = row["child"]
         child_id = row["id"]
 
-        col_exp, col_chk = st.columns([0.93, 0.07])
+        col_exp, col_chk = st.columns([0.88, 0.12])
         with col_chk:
             st.checkbox("", key=f"bulk_chk_{i}", label_visibility="collapsed")
         with col_exp:
