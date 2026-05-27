@@ -726,7 +726,7 @@ if page == "📊 Admin View":
             col_expr(["illness-medical-conditions-details"], "MedicalConditions"),
             col_expr(["behavior-mental-health-info", "behavior-mental-health-details"], "MentalHealthInfo"),
             col_expr(["additional-health-info-or-special-instructions"], "HealthInfo"),
-            col_expr(["list-regular-medications"], "Medications"),
+            col_expr(["current-regular-medications", "list-regular-medications"], "Medications"),
             col_expr(["Unit Primary Phone"], "PrimaryPhone"),
             col_expr(["Emergency Phone"], "EmergencyPhone"),
         ]
@@ -738,6 +738,7 @@ if page == "📊 Admin View":
             st.write("**Columns in your CSV:**", list(csv_cols))
             st.stop()
         df_health.columns = [c.replace("-", " ").replace("/", " ").title() for c in df_health.columns]
+        df_health = df_health.sort_values("Participant", key=lambda s: s.str.split().str[0].str.lower()).reset_index(drop=True)
         html_table = df_health.to_html(index=False, justify="center", border=1, escape=False)
         full_html = f"<html><body><h2>YMCA Health & Emergency Summary</h2>{html_table}</body></html>"
         st.success("✅ Report generated!")

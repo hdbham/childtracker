@@ -27,7 +27,7 @@ if uploaded_file is not None:
         col_expr(["illness-medical-conditions-details"], "MedicalConditions"),
         col_expr(["behavior-mental-health-info", "behavior-mental-health-details"], "MentalHealthInfo"),
         col_expr(["additional-health-info-or-special-instructions"], "HealthInfo"),
-        col_expr(["list-regular-medications"], "Medications"),
+        col_expr(["current-regular-medications", "list-regular-medications"], "Medications"),
         col_expr(["Unit Primary Phone"], "PrimaryPhone"),
         col_expr(["Emergency Phone"], "EmergencyPhone"),
     ]
