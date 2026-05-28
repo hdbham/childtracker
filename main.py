@@ -4,6 +4,8 @@ from firebase_admin import credentials, db, storage
 import pandas as pd
 import datetime
 import duckdb
+import uuid
+import urllib.parse
 from pytz import timezone
 
 try:
@@ -800,16 +802,24 @@ if page == "📊 Admin View":
 
         if uploaded_pdfs and st.button("⬆️ Upload Files"):
             bucket = storage.bucket()
+            BUCKET_NAME = "group-manager-a55a2.firebasestorage.app"
             for f in uploaded_pdfs:
                 path = f"camp/{upload_date.isoformat()}/{f.name}"
                 blob = bucket.blob(path)
+                download_token = str(uuid.uuid4())
+                blob.metadata = {"firebaseStorageDownloadTokens": download_token}
                 blob.upload_from_file(f, content_type="application/pdf")
-                blob.make_public()
+                blob.patch()
+                encoded_path = urllib.parse.quote(path, safe="")
+                url = (
+                    f"https://firebasestorage.googleapis.com/v0/b/{BUCKET_NAME}"
+                    f"/o/{encoded_path}?alt=media&token={download_token}"
+                )
                 files_ref.push({
                     "date": upload_date.isoformat(),
                     "label": upload_label.strip() or upload_date.isoformat(),
                     "name": f.name,
-                    "url": blob.public_url
+                    "url": url
                 })
             st.success(f"✅ {len(uploaded_pdfs)} file(s) uploaded")
             rerun()
