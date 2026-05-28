@@ -81,7 +81,7 @@ cred = credentials.Certificate({
 if not firebase_admin._apps:
     firebase_admin.initialize_app(cred, {
         'databaseURL': 'https://group-manager-a55a2-default-rtdb.firebaseio.com',
-        'storageBucket': 'group-manager-a55a2.appspot.com'
+        'storageBucket': 'group-manager-a55a2.firebasestorage.app'
     })
 
 staff_ref = db.reference(f"{site}/staff")
