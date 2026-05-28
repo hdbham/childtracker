@@ -763,7 +763,7 @@ if page == "📊 Admin View":
 
         col1, col2 = st.columns(2)
         with col1:
-            edited_memo = st.text_area("Memo Content:", value=master_memo_text, height=500, key="admin_memo_text")
+            edited_memo = st.text_area("Memo Content:", value=master_memo_text, height=500, key=f"admin_memo_text_{memo_edit_date.isoformat()}")
 
             if st.button("💾 Save & Push to All Staff"):
                 safe_memo = edited_memo.replace("\r\n", "\n")
