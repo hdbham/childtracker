@@ -740,6 +740,8 @@ if page == "📊 Admin View":
 
         select_parts = [
             col_expr(["Participant"], "Participant"),
+            col_expr(["Age", "age", "participant-age", "age-years"], "Age"),
+            col_expr(["shirt-size", "t-shirt-size", "tshirt-size", "Shirt Size", "shirt_size"], "ShirtSize"),
             col_expr(["allergies-sensitivities-details"], "Allergies"),
             col_expr(["illness-medical-conditions-details"], "MedicalConditions"),
             col_expr(["behavior-mental-health-info", "behavior-mental-health-details"], "MentalHealthInfo"),
