@@ -1056,7 +1056,7 @@ if page == "📁 Resources" and site == "cfc":
 | | |
 |---|---|
 | 📅 [Schedule](https://ymcautah-my.sharepoint.com/:x:/g/personal/ogdensdc_ymcautah_org/IQByJGGJCK_fSJJASjFWOXC0AcF8b59Wuvr9L3sPwFfP9eg?e=0EODmQ) | 💡 [Idea Doc](https://ymcautah-my.sharepoint.com/:w:/g/personal/ogdensdc_ymcautah_org/IQAN4olqityHSanetqZgxDrEAVhnkpqTr-udpzG87T7OClA?e=7Z4qQk) |
-| 🏊 [Swim Tracker](https://ymcautah-my.sharepoint.com/:w:/g/personal/ogdensdc_ymcautah_org/IQAN4olqityHSanetqZgxDrEAVhnkpqTr-udpzG87T7OClA?e=FgTgdV) | 📋 [Admin Planning Doc](https://ymcautah-my.sharepoint.com/:w:/g/personal/ogdensdc_ymcautah_org/IQCINpwiKU4ESK2KXszWW5r0AaA8Wx0mD6dBcd5hw1f4J6Y?e=xg8fdJ) |
+| 🏊 [Swim Tracker](https://ymcautah-my.sharepoint.com/:x:/g/personal/ogdensdc_ymcautah_org/IQAlnKwUgfpPQK4nz-652QKiAYtzH8_OlICKdcR3I8Bz_zk?e=nlDs9p) | 📋 [Admin Planning Doc](https://ymcautah-my.sharepoint.com/:w:/g/personal/ogdensdc_ymcautah_org/IQCINpwiKU4ESK2KXszWW5r0AaA8Wx0mD6dBcd5hw1f4J6Y?e=xg8fdJ) |
 | 📤 [Social Media Uploads](https://ymcautah.sharepoint.com/:f:/s/Administration/IgC4Gyac5TJyT5r2-mrsUEGNAQW6-f4NUtoOPO3owtfqX0o?e=qc6a6I) | |
 """)
 
