@@ -1022,13 +1022,6 @@ if page == "📅 My Memos" and site == "cfc":
 if page == "📁 Resources" and site == "cfc":
     st.title("📁 Resources")
 
-    st.markdown("""
-<div style="background:#1e3a5f;border-radius:10px;padding:1rem 1.25rem;margin-bottom:0.5rem">
-<div style="font-size:1.05rem;font-weight:700;margin-bottom:0.3rem;color:#ffffff">📋 CFC Standard Operating Procedures</div>
-<a href="https://ymcautah-my.sharepoint.com/:w:/g/personal/ogdensdc_ymcautah_org/IQBMK-jwK2PDSrNHtmOCeCneAbCKRV-UQVnCxNPd780TdmI?e=u2IqrB" target="_blank" style="color:#7eb8f7;font-weight:600;font-size:0.95rem">📄 Open SOP Document →</a>
-</div>
-""", unsafe_allow_html=True)
-
     st.markdown(
         "📤 **[Social Media Uploads](https://ymcautah.sharepoint.com/:f:/s/Administration/"
         "IgC4Gyac5TJyT5r2-mrsUEGNAQW6-f4NUtoOPO3owtfqX0o?e=qc6a6I)** — "
@@ -1088,9 +1081,16 @@ if page == "📁 Resources" and site == "cfc":
                             _render_file(f)
 
     with res_tab2:
+        st.markdown("""
+<div style="background:#1e3a5f;border-radius:10px;padding:1rem 1.25rem;margin-bottom:1rem">
+<div style="font-size:1.05rem;font-weight:700;margin-bottom:0.3rem;color:#ffffff">📋 CFC Standard Operating Procedures</div>
+<a href="https://ymcautah-my.sharepoint.com/:w:/g/personal/ogdensdc_ymcautah_org/IQBMK-jwK2PDSrNHtmOCeCneAbCKRV-UQVnCxNPd780TdmI?e=u2IqrB" target="_blank" style="color:#7eb8f7;font-weight:600;font-size:0.95rem">📄 Open SOP Document →</a>
+</div>
+""", unsafe_allow_html=True)
+
         all_sops = fetch_sop_files()
         if not all_sops:
-            st.info("No SOP files uploaded yet.")
+            st.info("No additional SOP files uploaded yet.")
         else:
             sops_by_label = {}
             for k, v in all_sops.items():
