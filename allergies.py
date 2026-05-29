@@ -24,18 +24,14 @@ if uploaded_file is not None:
     select_parts = [
         col_expr(["Participant"], "Participant"),
         col_expr(["Age", "age", "participant-age", "age-years"], "Age"),
-        col_expr(["Gender", "gender"], "Gender"),
         col_expr(["t-shirt-size", "shirt-size", "tshirt-size", "Shirt Size", "shirt_size"], "ShirtSize"),
         col_expr(["allergies-sensitivities-details"], "Allergies"),
         col_expr(["illness-medical-conditions-details"], "MedicalConditions"),
-        col_expr(["behavior-mental-health-details", "behavior-mental-health-info"], "MentalHealthInfo"),
+        col_expr(["behavior-mental-health-info", "behavior-mental-health-details"], "MentalHealthInfo"),
         col_expr(["additional-health-info-or-special-instructions"], "HealthInfo"),
         col_expr(["current-regular-medications", "list-regular-medications"], "Medications"),
-        col_expr(["insurance-provider"], "Insurance"),
         col_expr(["Unit Primary Phone"], "PrimaryPhone"),
-        col_expr(["Emergency Contact"], "EmergencyContact"),
         col_expr(["Emergency Phone"], "EmergencyPhone"),
-        col_expr(["please-include-parents-and-guardians", "authorized-pick-ups"], "AuthorizedPickups"),
     ]
 
     query = f"SELECT {', '.join(select_parts)} FROM roster"
