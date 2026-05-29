@@ -847,11 +847,35 @@ if page == "📊 Admin View":
                     folder=f"camp/{upload_date.isoformat()}",
                     label=upload_label.strip() or upload_date.isoformat(),
                     db_ref=files_ref,
-                    extra_fields={"date": upload_date.isoformat()},
+                    extra_fields={"date": upload_date.isoformat(), "type": "pdf"},
                 )
                 st.cache_data.clear()
                 st.success(f"✅ {len(uploaded_pdfs)} file(s) uploaded")
                 rerun()
+
+            st.divider()
+            st.markdown("**🔗 Add a Link**")
+            lc1, lc2 = st.columns(2)
+            with lc1:
+                link_title = st.text_input("Link title:", key="camp_link_title")
+                link_url = st.text_input("URL:", key="camp_link_url")
+            with lc2:
+                link_date = st.date_input("Date:", datetime.datetime.now(MT).date(), key="camp_link_date")
+                link_label = st.text_input("Label / Session:", key="camp_link_label")
+            if st.button("➕ Add Link", key="btn_add_camp_link"):
+                if link_title.strip() and link_url.strip():
+                    files_ref.push({
+                        "date": link_date.isoformat(),
+                        "label": link_label.strip() or link_date.isoformat(),
+                        "name": link_title.strip(),
+                        "url": link_url.strip(),
+                        "type": "link",
+                    })
+                    st.cache_data.clear()
+                    st.success(f"✅ Link '{link_title.strip()}' added")
+                    rerun()
+                else:
+                    st.error("Enter both a title and URL.")
 
             all_files = fetch_files()
             if all_files:
@@ -1029,16 +1053,31 @@ if page == "📁 Resources" and site == "cfc":
                     continue
                 files_by_date.setdefault(d, []).append(v)
 
+            def _render_file(f):
+                icon = "🔗" if f.get("type") == "link" else "📄"
+                st.markdown(f"{icon} [{f['name']}]({f['url']})")
+
             past = {d: f for d, f in files_by_date.items() if d < today}
             upcoming = {d: f for d, f in files_by_date.items() if d >= today}
 
             if upcoming:
                 st.subheader("📅 Upcoming")
+                # Group by ISO week
+                weeks = {}
                 for d in sorted(upcoming.keys()):
-                    label = upcoming[d][0].get("label", str(d))
-                    with st.expander(f"{d} — {label}"):
-                        for f in upcoming[d]:
-                            st.markdown(f"📄 [{f['name']}]({f['url']})")
+                    iso_year, iso_week, _ = d.isocalendar()
+                    week_key = (iso_year, iso_week)
+                    weeks.setdefault(week_key, []).append(d)
+                for (iso_year, iso_week), days in sorted(weeks.items()):
+                    week_start = days[0]
+                    week_end = days[-1]
+                    week_label = f"Week of {week_start.strftime('%b %-d')}–{week_end.strftime('%-d')}" if week_start != week_end else f"Week of {week_start.strftime('%b %-d')}"
+                    with st.expander(f"📆 {week_label}", expanded=(iso_year, iso_week) == today.isocalendar()[:2]):
+                        for d in sorted(days):
+                            day_label = upcoming[d][0].get("label", str(d))
+                            st.markdown(f"**{d.strftime('%A, %b %-d')} — {day_label}**")
+                            for f in upcoming[d]:
+                                _render_file(f)
 
             if past:
                 st.subheader("🗂️ Past")
@@ -1046,7 +1085,7 @@ if page == "📁 Resources" and site == "cfc":
                     label = past[d][0].get("label", str(d))
                     with st.expander(f"{d} — {label}"):
                         for f in past[d]:
-                            st.markdown(f"📄 [{f['name']}]({f['url']})")
+                            _render_file(f)
 
     with res_tab2:
         all_sops = fetch_sop_files()
