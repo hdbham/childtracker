@@ -92,6 +92,8 @@ logs_ref = db.reference(f"{site}/logs")
 incidents_ref = db.reference(f"{site}/incidents")
 memos_ref = db.reference(f"{site}/memos")
 files_ref = db.reference(f"{site}/files")
+sop_ref = db.reference(f"{site}/sop_files")
+training_ref = db.reference(f"{site}/training_files")
 meta_ref = db.reference(f"{site}/meta")
 
 # --- CACHED FIREBASE READS (TTL = 8s, busted on mutation via st.cache_data.clear()) ---
@@ -120,6 +122,20 @@ def fetch_memos():
 def fetch_files():
     try:
         return files_ref.get() or {}
+    except Exception:
+        return {}
+
+@st.cache_data(ttl=30, show_spinner=False)
+def fetch_sop_files():
+    try:
+        return sop_ref.get() or {}
+    except Exception:
+        return {}
+
+@st.cache_data(ttl=30, show_spinner=False)
+def fetch_training_files():
+    try:
+        return training_ref.get() or {}
     except Exception:
         return {}
 
@@ -796,18 +812,16 @@ if page == "📊 Admin View":
         # PDF File Manager
         st.header("📁 File Manager", divider="gray")
 
-        upload_date = st.date_input("Date these files belong to:", datetime.datetime.now(MT).date(), key="upload_date")
-        upload_label = st.text_input("Label / Session (e.g. Week 1 — Extreme Earth):", key="upload_label")
-        uploaded_pdfs = st.file_uploader("Upload PDFs", type=["pdf"], accept_multiple_files=True, key="pdf_uploader")
+        BUCKET_NAME = "group-manager-a55a2.firebasestorage.app"
 
-        if uploaded_pdfs and st.button("⬆️ Upload Files"):
-            bucket = storage.bucket()
-            BUCKET_NAME = "group-manager-a55a2.firebasestorage.app"
-            for f in uploaded_pdfs:
-                path = f"camp/{upload_date.isoformat()}/{f.name}"
+        def _upload_files(uploaded, folder, label, db_ref, extra_fields=None):
+            bucket = storage.bucket(BUCKET_NAME)
+            for f in uploaded:
+                path = f"{folder}/{f.name}"
                 blob = bucket.blob(path)
                 download_token = str(uuid.uuid4())
                 blob.metadata = {"firebaseStorageDownloadTokens": download_token}
+                f.seek(0)
                 blob.upload_from_file(f, content_type="application/pdf")
                 blob.patch()
                 encoded_path = urllib.parse.quote(path, safe="")
@@ -815,35 +829,125 @@ if page == "📊 Admin View":
                     f"https://firebasestorage.googleapis.com/v0/b/{BUCKET_NAME}"
                     f"/o/{encoded_path}?alt=media&token={download_token}"
                 )
-                files_ref.push({
-                    "date": upload_date.isoformat(),
-                    "label": upload_label.strip() or upload_date.isoformat(),
-                    "name": f.name,
-                    "url": url
-                })
-            st.success(f"✅ {len(uploaded_pdfs)} file(s) uploaded")
-            rerun()
+                record = {"label": label, "name": f.name, "url": url}
+                if extra_fields:
+                    record.update(extra_fields)
+                db_ref.push(record)
 
-        all_files = fetch_files()
-        if all_files:
-            st.subheader("Uploaded Files")
-            files_by_date = {}
-            for k, v in all_files.items():
-                d = v.get("date", "Unknown")
-                files_by_date.setdefault(d, []).append({**v, "key": k})
+        fm_tab1, fm_tab2, fm_tab3 = st.tabs(["📅 Camp Day Files", "📋 SOPs", "🎓 Training"])
 
-            for d in sorted(files_by_date.keys(), reverse=True):
-                with st.expander(f"📅 {d} — {files_by_date[d][0].get('label', '')}"):
-                    for f in files_by_date[d]:
-                        col_a, col_b = st.columns([4, 1])
-                        with col_a:
-                            st.markdown(f"📄 [{f['name']}]({f['url']})")
-                        with col_b:
-                            if st.button("🗑️", key=f"del_{f['key']}"):
-                                bucket = storage.bucket()
-                                bucket.blob(f"camp/{d}/{f['name']}").delete()
-                                files_ref.child(f["key"]).delete()
-                                rerun()
+        with fm_tab1:
+            upload_date = st.date_input("Date these files belong to:", datetime.datetime.now(MT).date(), key="upload_date")
+            upload_label = st.text_input("Label / Session (e.g. Week 1 — Extreme Earth):", key="upload_label")
+            uploaded_pdfs = st.file_uploader("Upload PDFs", type=["pdf"], accept_multiple_files=True, key="pdf_uploader")
+
+            if uploaded_pdfs and st.button("⬆️ Upload Files", key="btn_upload_camp"):
+                _upload_files(
+                    uploaded_pdfs,
+                    folder=f"camp/{upload_date.isoformat()}",
+                    label=upload_label.strip() or upload_date.isoformat(),
+                    db_ref=files_ref,
+                    extra_fields={"date": upload_date.isoformat()},
+                )
+                st.cache_data.clear()
+                st.success(f"✅ {len(uploaded_pdfs)} file(s) uploaded")
+                rerun()
+
+            all_files = fetch_files()
+            if all_files:
+                st.subheader("Uploaded Files")
+                files_by_date = {}
+                for k, v in all_files.items():
+                    d = v.get("date", "Unknown")
+                    files_by_date.setdefault(d, []).append({**v, "key": k})
+                for d in sorted(files_by_date.keys(), reverse=True):
+                    with st.expander(f"📅 {d} — {files_by_date[d][0].get('label', '')}"):
+                        for f in files_by_date[d]:
+                            col_a, col_b = st.columns([4, 1])
+                            with col_a:
+                                st.markdown(f"📄 [{f['name']}]({f['url']})")
+                            with col_b:
+                                if st.button("🗑️", key=f"del_{f['key']}"):
+                                    storage.bucket(BUCKET_NAME).blob(f"camp/{d}/{f['name']}").delete()
+                                    files_ref.child(f["key"]).delete()
+                                    st.cache_data.clear()
+                                    rerun()
+
+        with fm_tab2:
+            sop_label = st.text_input("Category / Label (e.g. Emergency Procedures, Health Protocols):", key="sop_label")
+            uploaded_sops = st.file_uploader("Upload SOP PDFs", type=["pdf"], accept_multiple_files=True, key="sop_uploader")
+
+            if uploaded_sops and st.button("⬆️ Upload SOPs", key="btn_upload_sop"):
+                if not sop_label.strip():
+                    st.error("Please enter a label/category before uploading.")
+                else:
+                    _upload_files(
+                        uploaded_sops,
+                        folder=f"sop/{sop_label.strip()}",
+                        label=sop_label.strip(),
+                        db_ref=sop_ref,
+                    )
+                    st.cache_data.clear()
+                    st.success(f"✅ {len(uploaded_sops)} SOP(s) uploaded under '{sop_label.strip()}'")
+                    rerun()
+
+            all_sops = fetch_sop_files()
+            if all_sops:
+                st.subheader("SOP Files")
+                sops_by_label = {}
+                for k, v in all_sops.items():
+                    lbl = v.get("label", "Uncategorized")
+                    sops_by_label.setdefault(lbl, []).append({**v, "key": k})
+                for lbl in sorted(sops_by_label.keys()):
+                    with st.expander(f"📋 {lbl}"):
+                        for f in sops_by_label[lbl]:
+                            col_a, col_b = st.columns([4, 1])
+                            with col_a:
+                                st.markdown(f"📄 [{f['name']}]({f['url']})")
+                            with col_b:
+                                if st.button("🗑️", key=f"del_sop_{f['key']}"):
+                                    storage.bucket(BUCKET_NAME).blob(f"sop/{lbl}/{f['name']}").delete()
+                                    sop_ref.child(f["key"]).delete()
+                                    st.cache_data.clear()
+                                    rerun()
+
+        with fm_tab3:
+            training_label = st.text_input("Category / Label (e.g. CPR, Mandated Reporter, Orientation):", key="training_label")
+            uploaded_training = st.file_uploader("Upload Training PDFs", type=["pdf"], accept_multiple_files=True, key="training_uploader")
+
+            if uploaded_training and st.button("⬆️ Upload Training Files", key="btn_upload_training"):
+                if not training_label.strip():
+                    st.error("Please enter a label/category before uploading.")
+                else:
+                    _upload_files(
+                        uploaded_training,
+                        folder=f"training/{training_label.strip()}",
+                        label=training_label.strip(),
+                        db_ref=training_ref,
+                    )
+                    st.cache_data.clear()
+                    st.success(f"✅ {len(uploaded_training)} file(s) uploaded under '{training_label.strip()}'")
+                    rerun()
+
+            all_training = fetch_training_files()
+            if all_training:
+                st.subheader("Training Files")
+                training_by_label = {}
+                for k, v in all_training.items():
+                    lbl = v.get("label", "Uncategorized")
+                    training_by_label.setdefault(lbl, []).append({**v, "key": k})
+                for lbl in sorted(training_by_label.keys()):
+                    with st.expander(f"🎓 {lbl}"):
+                        for f in training_by_label[lbl]:
+                            col_a, col_b = st.columns([4, 1])
+                            with col_a:
+                                st.markdown(f"📄 [{f['name']}]({f['url']})")
+                            with col_b:
+                                if st.button("🗑️", key=f"del_training_{f['key']}"):
+                                    storage.bucket(BUCKET_NAME).blob(f"training/{lbl}/{f['name']}").delete()
+                                    training_ref.child(f["key"]).delete()
+                                    st.cache_data.clear()
+                                    rerun()
 
 
 # MY MEMOS
@@ -894,36 +998,82 @@ if page == "📅 My Memos" and site == "cfc":
 if page == "📁 Resources" and site == "cfc":
     st.title("📁 Resources")
 
-    all_files = fetch_files()
-    if not all_files:
-        st.info("No files uploaded yet.")
-    else:
-        today = datetime.datetime.now(MT).date()
-        files_by_date = {}
-        for k, v in all_files.items():
-            try:
-                d = datetime.date.fromisoformat(v.get("date", ""))
-            except ValueError:
-                continue
-            files_by_date.setdefault(d, []).append(v)
+    st.markdown("""
+<div style="background:#fff3cd;border:2px solid #ffc107;border-radius:10px;padding:1rem 1.25rem;margin-bottom:0.5rem">
+<div style="font-size:1.05rem;font-weight:700;margin-bottom:0.3rem">📋 CFC Standard Operating Procedures</div>
+<a href="https://ymcautah-my.sharepoint.com/:w:/g/personal/ogdensdc_ymcautah_org/IQBMK-jwK2PDSrNHtmOCeCneAbCKRV-UQVnCxNPd780TdmI?e=u2IqrB" target="_blank" style="color:#856404;font-weight:600;font-size:0.95rem">📄 Open SOP Document →</a>
+</div>
+""", unsafe_allow_html=True)
 
-        past = {d: f for d, f in files_by_date.items() if d < today}
-        upcoming = {d: f for d, f in files_by_date.items() if d >= today}
+    st.markdown(
+        "📤 **[Social Media Uploads](https://ymcautah.sharepoint.com/:f:/s/Administration/"
+        "IgC4Gyac5TJyT5r2-mrsUEGNAQW6-f4NUtoOPO3owtfqX0o?e=qc6a6I)** — "
+        "SharePoint folder for social media content"
+    )
 
-        if upcoming:
-            st.subheader("📅 Upcoming")
-            for d in sorted(upcoming.keys()):
-                label = upcoming[d][0].get("label", str(d))
-                with st.expander(f"{d} — {label}"):
-                    for f in upcoming[d]:
+    st.divider()
+
+    res_tab1, res_tab2, res_tab3 = st.tabs(["📅 Camp Day Files", "📋 SOPs", "🎓 Training"])
+
+    with res_tab1:
+        all_files = fetch_files()
+        if not all_files:
+            st.info("No camp day files uploaded yet.")
+        else:
+            today = datetime.datetime.now(MT).date()
+            files_by_date = {}
+            for k, v in all_files.items():
+                try:
+                    d = datetime.date.fromisoformat(v.get("date", ""))
+                except ValueError:
+                    continue
+                files_by_date.setdefault(d, []).append(v)
+
+            past = {d: f for d, f in files_by_date.items() if d < today}
+            upcoming = {d: f for d, f in files_by_date.items() if d >= today}
+
+            if upcoming:
+                st.subheader("📅 Upcoming")
+                for d in sorted(upcoming.keys()):
+                    label = upcoming[d][0].get("label", str(d))
+                    with st.expander(f"{d} — {label}"):
+                        for f in upcoming[d]:
+                            st.markdown(f"📄 [{f['name']}]({f['url']})")
+
+            if past:
+                st.subheader("🗂️ Past")
+                for d in sorted(past.keys(), reverse=True):
+                    label = past[d][0].get("label", str(d))
+                    with st.expander(f"{d} — {label}"):
+                        for f in past[d]:
+                            st.markdown(f"📄 [{f['name']}]({f['url']})")
+
+    with res_tab2:
+        all_sops = fetch_sop_files()
+        if not all_sops:
+            st.info("No SOP files uploaded yet.")
+        else:
+            sops_by_label = {}
+            for k, v in all_sops.items():
+                lbl = v.get("label", "Uncategorized")
+                sops_by_label.setdefault(lbl, []).append(v)
+            for lbl in sorted(sops_by_label.keys()):
+                with st.expander(f"📋 {lbl}"):
+                    for f in sops_by_label[lbl]:
                         st.markdown(f"📄 [{f['name']}]({f['url']})")
 
-        if past:
-            st.subheader("🗂️ Past")
-            for d in sorted(past.keys(), reverse=True):
-                label = past[d][0].get("label", str(d))
-                with st.expander(f"{d} — {label}"):
-                    for f in past[d]:
+    with res_tab3:
+        all_training = fetch_training_files()
+        if not all_training:
+            st.info("No training files uploaded yet.")
+        else:
+            training_by_label = {}
+            for k, v in all_training.items():
+                lbl = v.get("label", "Uncategorized")
+                training_by_label.setdefault(lbl, []).append(v)
+            for lbl in sorted(training_by_label.keys()):
+                with st.expander(f"🎓 {lbl}"):
+                    for f in training_by_label[lbl]:
                         st.markdown(f"📄 [{f['name']}]({f['url']})")
 
 
