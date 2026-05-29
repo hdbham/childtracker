@@ -900,20 +900,31 @@ if page == "📊 Admin View":
         with fm_tab2:
             sop_label = st.text_input("Category / Label (e.g. Emergency Procedures, Health Protocols):", key="sop_label")
             uploaded_sops = st.file_uploader("Upload SOP PDFs", type=["pdf"], accept_multiple_files=True, key="sop_uploader")
-
             if uploaded_sops and st.button("⬆️ Upload SOPs", key="btn_upload_sop"):
                 if not sop_label.strip():
                     st.error("Please enter a label/category before uploading.")
                 else:
-                    _upload_files(
-                        uploaded_sops,
-                        folder=f"sop/{sop_label.strip()}",
-                        label=sop_label.strip(),
-                        db_ref=sop_ref,
-                    )
+                    _upload_files(uploaded_sops, folder=f"sop/{sop_label.strip()}", label=sop_label.strip(), db_ref=sop_ref, extra_fields={"type": "pdf"})
                     st.cache_data.clear()
                     st.success(f"✅ {len(uploaded_sops)} SOP(s) uploaded under '{sop_label.strip()}'")
                     rerun()
+
+            st.divider()
+            st.markdown("**🔗 Add a Link**")
+            sl1, sl2 = st.columns(2)
+            with sl1:
+                sop_link_title = st.text_input("Link title:", key="sop_link_title")
+                sop_link_url = st.text_input("URL:", key="sop_link_url")
+            with sl2:
+                sop_link_label = st.text_input("Category / Label:", key="sop_link_label")
+            if st.button("➕ Add Link", key="btn_add_sop_link"):
+                if sop_link_title.strip() and sop_link_url.strip() and sop_link_label.strip():
+                    sop_ref.push({"label": sop_link_label.strip(), "name": sop_link_title.strip(), "url": sop_link_url.strip(), "type": "link"})
+                    st.cache_data.clear()
+                    st.success(f"✅ Link '{sop_link_title.strip()}' added")
+                    rerun()
+                else:
+                    st.error("Enter title, URL, and category.")
 
             all_sops = fetch_sop_files()
             if all_sops:
@@ -927,10 +938,12 @@ if page == "📊 Admin View":
                         for f in sops_by_label[lbl]:
                             col_a, col_b = st.columns([4, 1])
                             with col_a:
-                                st.markdown(f"📄 [{f['name']}]({f['url']})")
+                                icon = "🔗" if f.get("type") == "link" else "📄"
+                                st.markdown(f"{icon} [{f['name']}]({f['url']})")
                             with col_b:
                                 if st.button("🗑️", key=f"del_sop_{f['key']}"):
-                                    storage.bucket(BUCKET_NAME).blob(f"sop/{lbl}/{f['name']}").delete()
+                                    if f.get("type") != "link":
+                                        storage.bucket(BUCKET_NAME).blob(f"sop/{lbl}/{f['name']}").delete()
                                     sop_ref.child(f["key"]).delete()
                                     st.cache_data.clear()
                                     rerun()
@@ -938,20 +951,31 @@ if page == "📊 Admin View":
         with fm_tab3:
             training_label = st.text_input("Category / Label (e.g. CPR, Mandated Reporter, Orientation):", key="training_label")
             uploaded_training = st.file_uploader("Upload Training PDFs", type=["pdf"], accept_multiple_files=True, key="training_uploader")
-
             if uploaded_training and st.button("⬆️ Upload Training Files", key="btn_upload_training"):
                 if not training_label.strip():
                     st.error("Please enter a label/category before uploading.")
                 else:
-                    _upload_files(
-                        uploaded_training,
-                        folder=f"training/{training_label.strip()}",
-                        label=training_label.strip(),
-                        db_ref=training_ref,
-                    )
+                    _upload_files(uploaded_training, folder=f"training/{training_label.strip()}", label=training_label.strip(), db_ref=training_ref, extra_fields={"type": "pdf"})
                     st.cache_data.clear()
                     st.success(f"✅ {len(uploaded_training)} file(s) uploaded under '{training_label.strip()}'")
                     rerun()
+
+            st.divider()
+            st.markdown("**🔗 Add a Link**")
+            tl1, tl2 = st.columns(2)
+            with tl1:
+                tr_link_title = st.text_input("Link title:", key="tr_link_title")
+                tr_link_url = st.text_input("URL:", key="tr_link_url")
+            with tl2:
+                tr_link_label = st.text_input("Category / Label:", key="tr_link_label")
+            if st.button("➕ Add Link", key="btn_add_tr_link"):
+                if tr_link_title.strip() and tr_link_url.strip() and tr_link_label.strip():
+                    training_ref.push({"label": tr_link_label.strip(), "name": tr_link_title.strip(), "url": tr_link_url.strip(), "type": "link"})
+                    st.cache_data.clear()
+                    st.success(f"✅ Link '{tr_link_title.strip()}' added")
+                    rerun()
+                else:
+                    st.error("Enter title, URL, and category.")
 
             all_training = fetch_training_files()
             if all_training:
@@ -965,10 +989,12 @@ if page == "📊 Admin View":
                         for f in training_by_label[lbl]:
                             col_a, col_b = st.columns([4, 1])
                             with col_a:
-                                st.markdown(f"📄 [{f['name']}]({f['url']})")
+                                icon = "🔗" if f.get("type") == "link" else "📄"
+                                st.markdown(f"{icon} [{f['name']}]({f['url']})")
                             with col_b:
                                 if st.button("🗑️", key=f"del_training_{f['key']}"):
-                                    storage.bucket(BUCKET_NAME).blob(f"training/{lbl}/{f['name']}").delete()
+                                    if f.get("type") != "link":
+                                        storage.bucket(BUCKET_NAME).blob(f"training/{lbl}/{f['name']}").delete()
                                     training_ref.child(f["key"]).delete()
                                     st.cache_data.clear()
                                     rerun()
@@ -1099,7 +1125,8 @@ if page == "📁 Resources" and site == "cfc":
             for lbl in sorted(sops_by_label.keys()):
                 with st.expander(f"📋 {lbl}"):
                     for f in sops_by_label[lbl]:
-                        st.markdown(f"📄 [{f['name']}]({f['url']})")
+                        icon = "🔗" if f.get("type") == "link" else "📄"
+                        st.markdown(f"{icon} [{f['name']}]({f['url']})")
 
     with res_tab3:
         all_training = fetch_training_files()
@@ -1113,7 +1140,8 @@ if page == "📁 Resources" and site == "cfc":
             for lbl in sorted(training_by_label.keys()):
                 with st.expander(f"🎓 {lbl}"):
                     for f in training_by_label[lbl]:
-                        st.markdown(f"📄 [{f['name']}]({f['url']})")
+                        icon = "🔗" if f.get("type") == "link" else "📄"
+                        st.markdown(f"{icon} [{f['name']}]({f['url']})")
 
 
 
