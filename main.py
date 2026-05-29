@@ -889,10 +889,12 @@ if page == "📊 Admin View":
                         for f in files_by_date[d]:
                             col_a, col_b = st.columns([4, 1])
                             with col_a:
-                                st.markdown(f"📄 [{f['name']}]({f['url']})")
+                                icon = "🔗" if f.get("type") == "link" else "📄"
+                                st.markdown(f"{icon} [{f['name']}]({f['url']})")
                             with col_b:
                                 if st.button("🗑️", key=f"del_{f['key']}"):
-                                    storage.bucket(BUCKET_NAME).blob(f"camp/{d}/{f['name']}").delete()
+                                    if f.get("type") != "link":
+                                        storage.bucket(BUCKET_NAME).blob(f"camp/{d}/{f['name']}").delete()
                                     files_ref.child(f["key"]).delete()
                                     st.cache_data.clear()
                                     rerun()
