@@ -999,9 +999,9 @@ if page == "📁 Resources" and site == "cfc":
     st.title("📁 Resources")
 
     st.markdown("""
-<div style="background:#fff3cd;border:2px solid #ffc107;border-radius:10px;padding:1rem 1.25rem;margin-bottom:0.5rem">
-<div style="font-size:1.05rem;font-weight:700;margin-bottom:0.3rem">📋 CFC Standard Operating Procedures</div>
-<a href="https://ymcautah-my.sharepoint.com/:w:/g/personal/ogdensdc_ymcautah_org/IQBMK-jwK2PDSrNHtmOCeCneAbCKRV-UQVnCxNPd780TdmI?e=u2IqrB" target="_blank" style="color:#856404;font-weight:600;font-size:0.95rem">📄 Open SOP Document →</a>
+<div style="background:#1e3a5f;border-radius:10px;padding:1rem 1.25rem;margin-bottom:0.5rem">
+<div style="font-size:1.05rem;font-weight:700;margin-bottom:0.3rem;color:#ffffff">📋 CFC Standard Operating Procedures</div>
+<a href="https://ymcautah-my.sharepoint.com/:w:/g/personal/ogdensdc_ymcautah_org/IQBMK-jwK2PDSrNHtmOCeCneAbCKRV-UQVnCxNPd780TdmI?e=u2IqrB" target="_blank" style="color:#7eb8f7;font-weight:600;font-size:0.95rem">📄 Open SOP Document →</a>
 </div>
 """, unsafe_allow_html=True)
 
