@@ -22,7 +22,8 @@ if uploaded_file is not None:
         return f"NULL AS {alias}"
 
     select_parts = [
-        col_expr(["Participant"], "Participant"),
+        col_expr(["FirstName"], "FirstName"),
+        col_expr(["LastName"], "LastName"),
         col_expr(["Age", "age", "participant-age", "age-years"], "Age"),
         col_expr(["t-shirt-size", "shirt-size", "tshirt-size", "Shirt Size", "shirt_size"], "ShirtSize"),
         col_expr(["allergies-sensitivities-details"], "Allergies"),
@@ -43,6 +44,7 @@ if uploaded_file is not None:
         st.write(list(cols))
         st.stop()
     df.columns = [col.replace("-", " ").replace("/", " ").title() for col in df.columns]
+    df = df.sort_values("Firstname", key=lambda s: s.str.lower()).reset_index(drop=True)
 
     # Build very basic HTML
     html_table = df.to_html(index=False, justify="center", border=1, escape=False)

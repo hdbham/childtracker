@@ -739,7 +739,8 @@ if page == "📊 Admin View":
             return f'"{match}" AS {alias}' if match else f"NULL AS {alias}"
 
         select_parts = [
-            col_expr(["Participant"], "Participant"),
+            col_expr(["FirstName"], "FirstName"),
+            col_expr(["LastName"], "LastName"),
             col_expr(["Age", "age", "participant-age", "age-years"], "Age"),
             col_expr(["t-shirt-size", "shirt-size", "tshirt-size", "Shirt Size", "shirt_size"], "ShirtSize"),
             col_expr(["allergies-sensitivities-details"], "Allergies"),
@@ -758,7 +759,7 @@ if page == "📊 Admin View":
             st.write("**Columns in your CSV:**", list(csv_cols))
             st.stop()
         df_health.columns = [c.replace("-", " ").replace("/", " ").title() for c in df_health.columns]
-        df_health = df_health.sort_values("Participant", key=lambda s: s.str.split().str[0].str.lower()).reset_index(drop=True)
+        df_health = df_health.sort_values("Firstname", key=lambda s: s.str.lower()).reset_index(drop=True)
         html_table = df_health.to_html(index=False, justify="center", border=1, escape=False)
         full_html = f"<html><body><h2>YMCA Health & Emergency Summary</h2>{html_table}</body></html>"
         st.success("✅ Report generated!")
