@@ -166,20 +166,24 @@ except Exception:
     _last_cleared = _today  # assume cleared on error to avoid loop
 
 if _last_cleared != _today:
-    st.warning("🌅 New day — clear all assignments?")
+    st.warning(f"🌅 New day — previous session ({_last_cleared}) is still loaded. Clear assignments to start fresh?")
+    _day_pin = st.text_input("Admin PIN to clear:", type="password", key="day_clear_pin")
     if st.button("Yes, Clear Assignments"):
-        def _clear():
-            assignments_ref.delete()
-            meta_ref.child("last_cleared_date").set(_today)
-            logs_ref.push({
-                "timestamp": datetime.datetime.now(MT).isoformat(),
-                "action": "AUTO_CLEAR",
-                "staff": "System",
-                "child": "ALL",
-                "notes": f"Assignments cleared for {_today}"
-            })
-        safe_write(_clear)
-        rerun()
+        if _day_pin == ADMIN_PIN and _day_pin:
+            def _clear():
+                assignments_ref.delete()
+                meta_ref.child("last_cleared_date").set(_today)
+                logs_ref.push({
+                    "timestamp": datetime.datetime.now(MT).isoformat(),
+                    "action": "AUTO_CLEAR",
+                    "staff": "System",
+                    "child": "ALL",
+                    "notes": f"Session cleared — previous date {_last_cleared}, new date {_today}"
+                })
+            safe_write(_clear)
+            rerun()
+        else:
+            st.error("Incorrect PIN.")
 
 # --- LOAD STAFF DATA ---
 staff_data_raw = fetch_staff()
@@ -410,6 +414,19 @@ if page == "👩‍🏫 Staff View":
                         rerun()
                     else:
                         st.warning("Enter a note first.")
+
+            pin_col, out_col = st.columns([0.6, 0.4])
+            with pin_col:
+                out_pin = st.text_input("PIN", type="password", key=f"out_pin_{i}", label_visibility="collapsed", placeholder="PIN to sign out")
+            with out_col:
+                if st.button("✅ Sign Out", key=f"out_{i}", width="stretch"):
+                    if out_pin == CHECKOUT_PIN and out_pin:
+                        assignments_ref.child(child_id).delete()
+                        logs_ref.push({"timestamp": now_timestamp(), "action": "Checkout", "staff": staff, "child": child_name, "notes": "Child Checked Out"})
+                        st.success(f"Signed out {child_name}.")
+                        rerun()
+                    else:
+                        st.error("Incorrect PIN.")
 
     # --- OTHER STAFF AT THIS CENTER ---
     other_staff = [s for s in STAFF if s and s != staff]
