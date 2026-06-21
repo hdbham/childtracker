@@ -392,7 +392,7 @@ if page == "👩‍🏫 Staff View":
         aged = [r for r in rows_with_index if r.get("age") is not None]
         no_age = [r for r in rows_with_index if r.get("age") is None]
 
-        OLDER_MAX = 16
+        OLDER_MAX = 20
 
         if num_groups == 2:
             split_age = st.number_input("Older group age cutoff (≥)", min_value=1, max_value=18, value=8, key="split2")
