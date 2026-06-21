@@ -268,7 +268,7 @@ if page == "👩‍🏫 Staff View":
             return (row["child"].lower(),)
         elif sort_by == "Age":
             age = row.get("age")
-            return (0 if age is not None else 1, age if age is not None else 999)
+            return (0 if age is not None else 1, -age if age is not None else 999)
         else:
             return (0 if row.get("signed_in") else 1, row.get("signed_in") or "")
 
