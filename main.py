@@ -198,9 +198,11 @@ for k, v in assignments_raw.items():
         "id": k,
         "staff": v.get("staff", ""),
         "child": v.get("child", ""),
-        "bathroom": v.get("bathroom", False)
+        "bathroom": v.get("bathroom", False),
+        "age": v.get("age"),
+        "signed_in": v.get("signed_in", ""),
     })
-data = pd.DataFrame(rows, columns=["id", "staff", "child", "bathroom"])
+data = pd.DataFrame(rows, columns=["id", "staff", "child", "bathroom", "age", "signed_in"])
 
 #test
 # --- PAGE NAVIGATION ---
@@ -353,33 +355,58 @@ if page == "👩‍🏫 Staff View":
                     st.error("Incorrect PIN.")
 
     st.subheader("➕ Add Child")
-    new_child = st.text_input("Name(s) — separate multiple with commas:", key="new_child_global")
-    if st.button("Add Child"):
-        names = [n.strip() for n in new_child.split(",") if n.strip()]
-        for name in names:
-            assignments_ref.push({"staff": staff, "child": name})
-            logs_ref.push({
-                "timestamp": now_timestamp(),
-                "action": "Add",
-                "staff": staff,
-                "child": name,
-                "notes": "Added"
-            })
-        if names:
-            st.success(f"Added {len(names)} child{'ren' if len(names) != 1 else ''}.")
+    new_child = st.text_input("Name(s) — comma-separated, age after name (e.g. 'Hunter 8, Emma 7'):", key="new_child_global")
+
+    import re as _re
+    def _parse_entries(raw):
+        result = []
+        for token in raw.split(","):
+            token = token.strip()
+            if not token:
+                continue
+            m = _re.match(r'^(.*?)\s+(\d+)\s*$', token)
+            if m:
+                result.append((m.group(1).strip(), int(m.group(2))))
+            else:
+                result.append((token, None))
+        return result
+
+    if st.button("Add Child") and new_child.strip():
+        entries = _parse_entries(new_child)
+        for name, age in entries:
+            payload = {"staff": staff, "child": name, "signed_in": now_timestamp()}
+            if age is not None:
+                payload["age"] = age
+            assignments_ref.push(payload)
+            logs_ref.push({"timestamp": now_timestamp(), "action": "Add", "staff": staff,
+                           "child": name, "notes": f"Added age={age}" if age else "Added"})
+        if entries:
+            st.success(f"Added {len(entries)} child{'ren' if len(entries) != 1 else ''}.")
             rerun()
 
     st.subheader("Children", divider="gray")
     st.write(f"🏕️ Total in Center: **{len(data)}**")
     st.write(f"🧑‍🏫 Under {staff}: **{len(rows_with_index)}**")
 
+    sort_by = st.segmented_control("Sort by", ["A–Z", "Age", "Time In"], default="Time In", key="child_sort")
+
+    def _sort_key(row):
+        if sort_by == "A–Z":
+            return (row["child"].lower(),)
+        elif sort_by == "Age":
+            age = row.get("age")
+            return (0 if age is not None else 1, age if age is not None else 999)
+        else:
+            return (0 if row.get("signed_in") else 1, row.get("signed_in") or "")
+
+    rows_with_index = sorted(rows_with_index, key=_sort_key)
 
     for i, row in enumerate(rows_with_index):
         child_name = row["child"]
         child_id = row["id"]
         in_bathroom = row.get("bathroom", False)
-
-        label = f"🚻 {child_name}" if in_bathroom else child_name
+        age_tag = f" · {row['age']}" if row.get("age") is not None else ""
+        label = f"🚻 {child_name}{age_tag}" if in_bathroom else f"{child_name}{age_tag}"
         with st.expander(label):
             st.caption(f"📍 {new_location}")
 
