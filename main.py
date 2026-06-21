@@ -450,7 +450,8 @@ if page == "👩‍🏫 Staff View":
         child_id = row["id"]
         in_bathroom = row.get("bathroom", False)
 
-        label = f"🚻 {child_name}" if in_bathroom else child_name
+        age_tag = f" · age {row['age']}" if row.get("age") is not None else ""
+        label = f"🚻 {child_name}{age_tag}" if in_bathroom else f"{child_name}{age_tag}"
         with st.expander(label):
             st.caption(f"📍 {new_location}")
 
