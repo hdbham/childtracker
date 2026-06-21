@@ -424,38 +424,42 @@ if page == "👩‍🏫 Staff View":
         no_age = [r for r in rows_with_index if r.get("age") is None]
 
         GROUP_MAX = 20
+        GROUP_DEFAULT = 16
 
         def _cap(grp, mx):
             return grp[:mx], grp[mx:]
 
         if num_groups == 2:
             split_age = st.number_input("Older group age cutoff (≥)", min_value=1, max_value=18, value=8, key="split2")
+            g1_max = st.number_input("Group 1 max", min_value=1, max_value=GROUP_MAX, value=GROUP_DEFAULT, key="g1_max_2")
+            g2_max = st.number_input("Group 2 max", min_value=1, max_value=GROUP_MAX, value=GROUP_MAX, key="g2_max_2")
             older_all = sorted([r for r in aged if r["age"] >= split_age], key=lambda r: -r["age"])
             younger_all = sorted([r for r in aged if r["age"] < split_age], key=lambda r: r["age"]) + no_age
-            older, of1 = _cap(older_all, GROUP_MAX)
-            younger, of2 = _cap(of1 + younger_all, GROUP_MAX)
-            notes = []
-            if of1: notes.append(f"⚠️ {len(of1)} from G1 overflow")
-            if of2: notes.append(f"⚠️ {len(of2)} exceed G2 max too")
+            older, of1 = _cap(older_all, g1_max)
+            younger, of2 = _cap(of1 + younger_all, g2_max)
             groups_data = [older, younger]
             group_labels = [
-                f"Group 1 (age ≥ {split_age})" + (f"  ⚠️ +{len(of1)} → G2" if of1 else ""),
-                f"Group 2 (age < {split_age})" + (f"  ⚠️ {len(of2)} over max" if of2 else ""),
+                f"Group 1 (age ≥ {split_age}, max {g1_max})" + (f"  ⚠️ +{len(of1)} → G2" if of1 else ""),
+                f"Group 2 (age < {split_age}, max {g2_max})" + (f"  ⚠️ {len(of2)} overflow" if of2 else ""),
             ]
         else:
             upper = st.number_input("Oldest group cutoff (≥)", min_value=1, max_value=18, value=8, key="split3_upper")
             lower = st.number_input("Youngest group cutoff (≤)", min_value=1, max_value=18, value=6, key="split3_lower")
+            c1, c2, c3 = st.columns(3)
+            g1_max = c1.number_input("G1 max", min_value=1, max_value=GROUP_MAX, value=GROUP_DEFAULT, key="g1_max_3")
+            g2_max = c2.number_input("G2 max", min_value=1, max_value=GROUP_MAX, value=GROUP_MAX, key="g2_max_3")
+            g3_max = c3.number_input("G3 max", min_value=1, max_value=GROUP_MAX, value=GROUP_MAX, key="g3_max_3")
             older_all = sorted([r for r in aged if r["age"] >= upper], key=lambda r: -r["age"])
             young_all  = sorted([r for r in aged if r["age"] <= lower], key=lambda r: r["age"])
             mid_base   = [r for r in aged if lower < r["age"] < upper] + no_age
-            g_old,  of1 = _cap(older_all, GROUP_MAX)
-            g_young, of3 = _cap(young_all, GROUP_MAX)
-            g_mid,  of2 = _cap(of1 + mid_base + of3, GROUP_MAX)
+            g_old,  of1 = _cap(older_all, g1_max)
+            g_young, of3 = _cap(young_all, g3_max)
+            g_mid,  of2 = _cap(of1 + mid_base + of3, g2_max)
             groups_data = [g_old, g_mid, g_young]
             group_labels = [
-                f"Group 1 (age ≥ {upper})" + (f"  ⚠️ +{len(of1)} → G2" if of1 else ""),
-                f"Group 2 (middle / overflow)" + (f"  ⚠️ {len(of2)} over max" if of2 else ""),
-                f"Group 3 (age ≤ {lower})" + (f"  ⚠️ +{len(of3)} → G2" if of3 else ""),
+                f"Group 1 (age ≥ {upper}, max {g1_max})" + (f"  ⚠️ +{len(of1)} → G2" if of1 else ""),
+                f"Group 2 (middle, max {g2_max})" + (f"  ⚠️ {len(of2)} overflow" if of2 else ""),
+                f"Group 3 (age ≤ {lower}, max {g3_max})" + (f"  ⚠️ +{len(of3)} → G2" if of3 else ""),
             ]
 
         group_staff_sel = []
