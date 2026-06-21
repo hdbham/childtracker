@@ -267,23 +267,39 @@ if page == "👩‍🏫 Staff View":
 
     # All children at this site with id lookup
     all_rows = data.to_dict(orient="records")
-    all_name_to_id = {r["child"]: r["id"] for r in all_rows}
+    all_name_to_id  = {r["child"]: r["id"]        for r in all_rows}
+    all_name_to_age = {r["child"]: r.get("age")   for r in all_rows}
+    all_name_to_ts  = {r["child"]: r.get("signed_in", "") for r in all_rows}
     all_staff_with_kids = [s for s in STAFF if s and not data[data["staff"] == s].empty]
     child_to_staff = {r["child"]: r["staff"] for r in all_rows}
+
+    _bulk_sort = st.session_state.get("child_sort", "Time In")
+
+    def _bulk_sort_key(name):
+        if _bulk_sort == "A–Z":
+            return (name.lower(),)
+        elif _bulk_sort == "Age":
+            age = all_name_to_age.get(name)
+            return (0 if age is not None else 1, age if age is not None else 999)
+        else:  # Time In
+            ts = all_name_to_ts.get(name) or ""
+            return (0 if ts else 1, ts)
 
     DIVIDER_PREFIX = "§div§"
     grouped_options = []
     all_child_names = []
     for s in all_staff_with_kids:
         grouped_options.append(f"{DIVIDER_PREFIX}{s}")
-        children = list(data[data["staff"] == s]["child"])
+        children = sorted(list(data[data["staff"] == s]["child"]), key=_bulk_sort_key)
         grouped_options.extend(children)
         all_child_names.extend(children)
 
     def _fmt(opt):
         if opt.startswith(DIVIDER_PREFIX):
             return f"── {opt[len(DIVIDER_PREFIX):]} ──"
-        return f"  {opt}"
+        age = all_name_to_age.get(opt)
+        age_str = f" ({age})" if age is not None else ""
+        return f"  {opt}{age_str}"
 
     # Expand any dividers before rendering the widget
     _pre = st.session_state.get("bulk_select", [])
