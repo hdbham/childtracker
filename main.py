@@ -198,9 +198,11 @@ for k, v in assignments_raw.items():
         "id": k,
         "staff": v.get("staff", ""),
         "child": v.get("child", ""),
-        "bathroom": v.get("bathroom", False)
+        "bathroom": v.get("bathroom", False),
+        "age": v.get("age"),
+        "signed_in": v.get("signed_in", ""),
     })
-data = pd.DataFrame(rows, columns=["id", "staff", "child", "bathroom"])
+data = pd.DataFrame(rows, columns=["id", "staff", "child", "bathroom", "age", "signed_in"])
 
 #test
 # --- PAGE NAVIGATION ---
@@ -412,7 +414,7 @@ if page == "👩‍🏫 Staff View":
             for gi, grp in enumerate(groups):
                 target_staff = group_staff[gi]
                 for name, age in grp:
-                    payload = {"staff": target_staff, "child": name}
+                    payload = {"staff": target_staff, "child": name, "signed_in": now_timestamp()}
                     if age is not None:
                         payload["age"] = age
                     assignments_ref.push(payload)
@@ -430,6 +432,18 @@ if page == "👩‍🏫 Staff View":
     st.write(f"🏕️ Total in Center: **{len(data)}**")
     st.write(f"🧑‍🏫 Under {staff}: **{len(rows_with_index)}**")
 
+    sort_by = st.segmented_control("Sort by", ["A–Z", "Age", "Time In"], default="Time In", key="child_sort")
+
+    def _sort_key(row):
+        if sort_by == "A–Z":
+            return (row["child"].lower(),)
+        elif sort_by == "Age":
+            age = row.get("age")
+            return (0 if age is not None else 1, age if age is not None else 999)
+        else:  # Time In
+            return (0 if row.get("signed_in") else 1, row.get("signed_in") or "")
+
+    rows_with_index = sorted(rows_with_index, key=_sort_key)
 
     for i, row in enumerate(rows_with_index):
         child_name = row["child"]
