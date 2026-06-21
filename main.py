@@ -355,78 +355,90 @@ if page == "👩‍🏫 Staff View":
                     st.error("Incorrect PIN.")
 
     st.subheader("➕ Add Child")
-    new_child = st.text_input("Name(s) — separate multiple with commas (add age after name, e.g. 'Hunter B 2, Retnuh 4'):", key="new_child_global")
+    new_child = st.text_input("Name(s) — comma-separated, age after name (e.g. 'Hunter B 8, Retnuh 6'):", key="new_child_global")
 
+    import re as _re
     def _parse_entries(raw):
-        """Parse 'Name Age, Name Age, ...' → list of (name, age|None)."""
-        import re
         result = []
         for token in raw.split(","):
             token = token.strip()
             if not token:
                 continue
-            m = re.match(r'^(.*?)\s+(\d+)\s*$', token)
+            m = _re.match(r'^(.*?)\s+(\d+)\s*$', token)
             if m:
                 result.append((m.group(1).strip(), int(m.group(2))))
             else:
                 result.append((token, None))
         return result
 
-    def _build_groups(entries):
-        """Split entries into 2 or 3 age-balanced groups."""
-        n = len(entries)
-        num_groups = 3 if n > 43 else 2
-        # sort by age (None ages go last)
-        with_age = sorted([e for e in entries if e[1] is not None], key=lambda x: x[1])
-        no_age   = [e for e in entries if e[1] is None]
-        ordered  = with_age + no_age
-        # snake/round-robin across groups for age balance
-        groups = [[] for _ in range(num_groups)]
-        for i, entry in enumerate(ordered):
-            groups[i % num_groups].append(entry)
-        return groups, num_groups
+    if st.button("Add Child") and new_child.strip():
+        for name, age in _parse_entries(new_child):
+            payload = {"staff": staff, "child": name, "signed_in": now_timestamp()}
+            if age is not None:
+                payload["age"] = age
+            assignments_ref.push(payload)
+            logs_ref.push({"timestamp": now_timestamp(), "action": "Add", "staff": staff,
+                           "child": name, "notes": f"Added age={age}" if age else "Added"})
+        st.success(f"Added {len(_parse_entries(new_child))} child(ren).")
+        rerun()
 
-    parsed = _parse_entries(new_child) if new_child.strip() else []
+    # ── Distribute panel (only shown for "unsorted" staff bucket) ──
+    if staff.lower() in ("unsorted", "unfiltered"):
+        total = len(rows_with_index)
+        num_groups = 3 if total >= 43 else 2
+        st.divider()
+        st.subheader(f"🗂️ Distribute to Classrooms ({total} kids → {num_groups} groups)")
 
-    if parsed:
-        groups, num_groups = _build_groups(parsed)
-        total = len(parsed)
-        target = total // num_groups
-        remainder = total % num_groups
+        aged = [r for r in rows_with_index if r.get("age") is not None]
+        no_age = [r for r in rows_with_index if r.get("age") is None]
 
-        st.caption(f"**{total} kids → {num_groups} groups** (recommended split: {target+1 if remainder else target}{'/' + str(target) if remainder else ''} per group)")
+        if num_groups == 2:
+            split_age = st.number_input("Older group age cutoff (≥)", min_value=1, max_value=18, value=8, key="split2")
+            older = [r for r in aged if r["age"] >= split_age]
+            younger = [r for r in aged if r["age"] < split_age]
+            # balance: move youngest of older group to younger if sizes differ by >2
+            while len(older) - len(younger) > 2:
+                oldest_of_older = sorted(older, key=lambda r: r["age"])
+                # move the youngest 8 (or split_age) over
+                candidate = next((r for r in oldest_of_older if r["age"] == split_age), None)
+                if candidate:
+                    older.remove(candidate)
+                    younger.append(candidate)
+                else:
+                    break
+            groups_data = [older + no_age, younger]
+            group_labels = [f"Group 1 (age ≥ {split_age})", f"Group 2 (age < {split_age})"]
+        else:
+            upper = st.number_input("Oldest group cutoff (≥)", min_value=1, max_value=18, value=8, key="split3_upper")
+            lower = st.number_input("Youngest group cutoff (≤)", min_value=1, max_value=18, value=6, key="split3_lower")
+            g_old = [r for r in aged if r["age"] >= upper]
+            g_young = [r for r in aged if r["age"] <= lower]
+            g_mid = [r for r in aged if lower < r["age"] < upper] + no_age
+            groups_data = [g_old, g_mid, g_young]
+            group_labels = [f"Group 1 (age ≥ {upper})", f"Group 2 (middle / overflow)", f"Group 3 (age ≤ {lower})"]
 
-        group_staff = []
+        group_staff_sel = []
         cols = st.columns(num_groups)
-        for gi, (col, grp) in enumerate(zip(cols, groups)):
+        for gi, (col, grp, lbl) in enumerate(zip(cols, groups_data, group_labels)):
             with col:
-                ages = [a for _, a in grp if a is not None]
+                ages = [r["age"] for r in grp if r.get("age") is not None]
                 age_str = f"ages {min(ages)}–{max(ages)}" if ages else "no ages"
-                st.markdown(f"**Group {gi+1}** — {len(grp)} kids, {age_str}")
-                assigned = st.selectbox("Assign to:", STAFF, key=f"grp_staff_{gi}",
-                                        index=gi % len(STAFF) if STAFF else 0)
-                group_staff.append(assigned)
-                for name, age in grp:
-                    st.caption(f"• {name}" + (f" (age {age})" if age else ""))
+                st.markdown(f"**{lbl}**  \n{len(grp)} kids · {age_str}")
+                sel = st.selectbox("→ Staff:", [s for s in STAFF if s.lower() not in ("unsorted","unfiltered")],
+                                   key=f"dist_staff_{gi}")
+                group_staff_sel.append(sel)
+                for r in sorted(grp, key=lambda x: x["child"].lower()):
+                    st.caption(f"• {r['child']}" + (f" ({r['age']})" if r.get("age") is not None else ""))
 
-        if st.button("✅ Confirm & Add All"):
-            added = 0
-            for gi, grp in enumerate(groups):
-                target_staff = group_staff[gi]
-                for name, age in grp:
-                    payload = {"staff": target_staff, "child": name, "signed_in": now_timestamp()}
-                    if age is not None:
-                        payload["age"] = age
-                    assignments_ref.push(payload)
-                    logs_ref.push({"timestamp": now_timestamp(), "action": "Add",
-                                   "staff": target_staff, "child": name,
-                                   "notes": f"Added age={age}" if age else "Added"})
-                    added += 1
-            st.success(f"Added {added} children across {num_groups} groups.")
+        if st.button("✅ Distribute"):
+            for gi, grp in enumerate(groups_data):
+                for r in grp:
+                    assignments_ref.child(r["id"]).update({"staff": group_staff_sel[gi]})
+                    logs_ref.push({"timestamp": now_timestamp(), "action": "Move",
+                                   "staff": group_staff_sel[gi], "child": r["child"],
+                                   "notes": f"Distributed from unsorted"})
+            st.success("Children distributed.")
             rerun()
-    else:
-        if st.button("Add Child"):
-            pass  # no input, nothing to do
 
     st.subheader("Children", divider="gray")
     st.write(f"🏕️ Total in Center: **{len(data)}**")
