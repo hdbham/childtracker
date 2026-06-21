@@ -215,6 +215,25 @@ page = st.sidebar.radio("📂 Navigate", _nav)
 # STAFF VIEW
 if page == "👩‍🏫 Staff View":
     st.title(f"SDC Dashboard — {SITE_LABEL} 😎")
+
+    STAFF_MAX = 20
+
+    def _is_unsorted(s):
+        return s.lower() in ("unsorted", "unfiltered")
+
+    def _staff_count(s):
+        return int((data["staff"] == s).sum())
+
+    def _at_capacity(s):
+        return not _is_unsorted(s) and _staff_count(s) >= STAFF_MAX
+
+    def _capacity_label(s):
+        if _is_unsorted(s):
+            return s
+        n = _staff_count(s)
+        flag = " 🔴" if n >= STAFF_MAX else (f" 🟡" if n >= STAFF_MAX - 3 else "")
+        return f"{s} ({n}/{STAFF_MAX}){flag}"
+
     if "selected_staff" not in st.session_state:
         _unsorted = next((s for s in STAFF if s.lower() in ("unsorted", "unfiltered")), STAFF[0] if STAFF else None)
         st.session_state["selected_staff"] = _unsorted
@@ -346,14 +365,18 @@ if page == "👩‍🏫 Staff View":
                 else:
                     st.error("Incorrect PIN.")
         with col_move:
-            move_to = st.selectbox("Move to:", [s for s in STAFF if s], key="bulk_move_to")
+            move_to = st.selectbox("Move to:", [s for s in STAFF if s], key="bulk_move_to", format_func=_capacity_label)
             if st.button("🔄 Move", width="stretch"):
                 if bulk_pin == CHECKOUT_PIN and bulk_pin:
-                    for child_id, child_name in selected_ids:
-                        assignments_ref.child(child_id).update({"staff": move_to, "child": child_name})
-                        logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": move_to, "child": child_name, "notes": f"Bulk moved to {move_to}"})
-                    st.success(f"Moved {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'} to {move_to}.")
-                    rerun()
+                    after_count = _staff_count(move_to) + len(selected_ids)
+                    if _at_capacity(move_to) or (not _is_unsorted(move_to) and after_count > STAFF_MAX):
+                        st.error(f"{move_to} would exceed {STAFF_MAX} kids ({_staff_count(move_to)} now + {len(selected_ids)} moving = {after_count}).")
+                    else:
+                        for child_id, child_name in selected_ids:
+                            assignments_ref.child(child_id).update({"staff": move_to, "child": child_name})
+                            logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": move_to, "child": child_name, "notes": f"Bulk moved to {move_to}"})
+                        st.success(f"Moved {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'} to {move_to}.")
+                        rerun()
                 else:
                     st.error("Incorrect PIN.")
 
@@ -375,15 +398,20 @@ if page == "👩‍🏫 Staff View":
         return result
 
     if st.button("Add Child") and new_child.strip():
-        for name, age in _parse_entries(new_child):
-            payload = {"staff": staff, "child": name, "signed_in": now_timestamp()}
-            if age is not None:
-                payload["age"] = age
-            assignments_ref.push(payload)
-            logs_ref.push({"timestamp": now_timestamp(), "action": "Add", "staff": staff,
-                           "child": name, "notes": f"Added age={age}" if age else "Added"})
-        st.success(f"Added {len(_parse_entries(new_child))} child(ren).")
-        rerun()
+        entries = _parse_entries(new_child)
+        would_be = _staff_count(staff) + len(entries)
+        if _at_capacity(staff) or (not _is_unsorted(staff) and would_be > STAFF_MAX):
+            st.error(f"{staff} is at capacity ({_staff_count(staff)}/{STAFF_MAX}). Add to unsorted first.")
+        else:
+            for name, age in entries:
+                payload = {"staff": staff, "child": name, "signed_in": now_timestamp()}
+                if age is not None:
+                    payload["age"] = age
+                assignments_ref.push(payload)
+                logs_ref.push({"timestamp": now_timestamp(), "action": "Add", "staff": staff,
+                               "child": name, "notes": f"Added age={age}" if age else "Added"})
+            st.success(f"Added {len(entries)} child(ren).")
+            rerun()
 
     # ── Distribute panel (only shown for "unsorted" staff bucket) ──
     if staff.lower() in ("unsorted", "unfiltered"):
@@ -490,12 +518,15 @@ if page == "👩‍🏫 Staff View":
                         logs_ref.push({"timestamp": now_timestamp(), "action": "BATHROOM", "staff": staff, "child": child_name, "notes": "Bathroom Break"})
                         rerun()
             with c2:
-                new_staff_for_child = st.selectbox("Move to:", [s for s in STAFF if s], index=STAFF.index(staff) if staff in STAFF else 0, key=f"move_{i}", label_visibility="collapsed")
+                new_staff_for_child = st.selectbox("Move to:", [s for s in STAFF if s], index=STAFF.index(staff) if staff in STAFF else 0, key=f"move_{i}", label_visibility="collapsed", format_func=_capacity_label)
                 if st.button("🔄 Move", key=f"btn_move_{i}", width="stretch"):
-                    assignments_ref.child(child_id).update({"staff": new_staff_for_child, "child": child_name})
-                    logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": new_staff_for_child, "child": child_name, "notes": f"Moved from {staff} to {new_staff_for_child}"})
-                    st.success(f"Moved to {new_staff_for_child}")
-                    rerun()
+                    if _at_capacity(new_staff_for_child):
+                        st.error(f"{new_staff_for_child} is full ({STAFF_MAX} max).")
+                    else:
+                        assignments_ref.child(child_id).update({"staff": new_staff_for_child, "child": child_name})
+                        logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": new_staff_for_child, "child": child_name, "notes": f"Moved from {staff} to {new_staff_for_child}"})
+                        st.success(f"Moved to {new_staff_for_child}")
+                        rerun()
 
             inc_col, btn_col = st.columns([0.78, 0.22])
             with inc_col:
@@ -551,12 +582,15 @@ if page == "👩‍🏫 Staff View":
                                 logs_ref.push({"timestamp": now_timestamp(), "action": "BATHROOM", "staff": other, "child": ochild, "notes": "Bathroom Break"})
                                 rerun()
                     with c2:
-                        omove_to = st.selectbox("Move to:", [s for s in STAFF if s], index=STAFF.index(other) if other in STAFF else 0, key=f"omove_{other}_{j}", label_visibility="collapsed")
+                        omove_to = st.selectbox("Move to:", [s for s in STAFF if s], index=STAFF.index(other) if other in STAFF else 0, key=f"omove_{other}_{j}", label_visibility="collapsed", format_func=_capacity_label)
                         if st.button("🔄 Move", key=f"obtn_move_{other}_{j}", width="stretch"):
-                            assignments_ref.child(ochild_id).update({"staff": omove_to, "child": ochild})
-                            logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": omove_to, "child": ochild, "notes": f"Moved from {other} to {omove_to}"})
-                            st.success(f"Moved to {omove_to}")
-                            rerun()
+                            if _at_capacity(omove_to):
+                                st.error(f"{omove_to} is full ({STAFF_MAX} max).")
+                            else:
+                                assignments_ref.child(ochild_id).update({"staff": omove_to, "child": ochild})
+                                logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": omove_to, "child": ochild, "notes": f"Moved from {other} to {omove_to}"})
+                                st.success(f"Moved to {omove_to}")
+                                rerun()
                     oinc_col, obtn_col = st.columns([0.78, 0.22])
                     with oinc_col:
                         oinc = st.text_input("Incident note", placeholder="Describe incident…", key=f"oinc_{other}_{j}", label_visibility="collapsed")
