@@ -215,7 +215,8 @@ page = st.sidebar.radio("📂 Navigate", _nav)
 # STAFF VIEW
 if page == "👩‍🏫 Staff View":
     st.title(f"SDC Dashboard — {SITE_LABEL} 😎")
-    staff = st.selectbox("Select Staff", STAFF, key="selected_staff")
+    _unsorted_idx = next((i for i, s in enumerate(STAFF) if s.lower() in ("unsorted", "unfiltered")), 0)
+    staff = st.selectbox("Select Staff", STAFF, index=_unsorted_idx, key="selected_staff")
     if not staff: st.stop()
 
     memos_data = fetch_memos()
