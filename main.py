@@ -392,30 +392,37 @@ if page == "👩‍🏫 Staff View":
         aged = [r for r in rows_with_index if r.get("age") is not None]
         no_age = [r for r in rows_with_index if r.get("age") is None]
 
+        OLDER_MAX = 16
+
         if num_groups == 2:
             split_age = st.number_input("Older group age cutoff (≥)", min_value=1, max_value=18, value=8, key="split2")
-            older = [r for r in aged if r["age"] >= split_age]
+            # sort older kids oldest-first so overflow spills the youngest-of-the-older down
+            older_all = sorted([r for r in aged if r["age"] >= split_age], key=lambda r: -r["age"])
             younger = [r for r in aged if r["age"] < split_age]
-            # balance: move youngest of older group to younger if sizes differ by >2
-            while len(older) - len(younger) > 2:
-                oldest_of_older = sorted(older, key=lambda r: r["age"])
-                # move the youngest 8 (or split_age) over
-                candidate = next((r for r in oldest_of_older if r["age"] == split_age), None)
-                if candidate:
-                    older.remove(candidate)
-                    younger.append(candidate)
-                else:
-                    break
+            older = older_all[:OLDER_MAX]
+            overflow = older_all[OLDER_MAX:]  # excess 8s (youngest of the group) go to younger
+            younger = overflow + younger
             groups_data = [older + no_age, younger]
-            group_labels = [f"Group 1 (age ≥ {split_age})", f"Group 2 (age < {split_age})"]
+            overflow_note = f" ⚠️ {len(overflow)} overflow → Group 2" if overflow else ""
+            group_labels = [
+                f"Group 1 (age ≥ {split_age}, max {OLDER_MAX}){overflow_note}",
+                f"Group 2 (age < {split_age} + overflow)",
+            ]
         else:
             upper = st.number_input("Oldest group cutoff (≥)", min_value=1, max_value=18, value=8, key="split3_upper")
             lower = st.number_input("Youngest group cutoff (≤)", min_value=1, max_value=18, value=6, key="split3_lower")
-            g_old = [r for r in aged if r["age"] >= upper]
+            older_all = sorted([r for r in aged if r["age"] >= upper], key=lambda r: -r["age"])
+            g_old = older_all[:OLDER_MAX]
+            overflow = older_all[OLDER_MAX:]
             g_young = [r for r in aged if r["age"] <= lower]
-            g_mid = [r for r in aged if lower < r["age"] < upper] + no_age
+            g_mid = overflow + [r for r in aged if lower < r["age"] < upper] + no_age
             groups_data = [g_old, g_mid, g_young]
-            group_labels = [f"Group 1 (age ≥ {upper})", f"Group 2 (middle / overflow)", f"Group 3 (age ≤ {lower})"]
+            overflow_note = f" ⚠️ +{len(overflow)} overflow" if overflow else ""
+            group_labels = [
+                f"Group 1 (age ≥ {upper}, max {OLDER_MAX}){overflow_note}",
+                f"Group 2 (middle / overflow)",
+                f"Group 3 (age ≤ {lower})",
+            ]
 
         group_staff_sel = []
         cols = st.columns(num_groups)
