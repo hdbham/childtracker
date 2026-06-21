@@ -198,11 +198,9 @@ for k, v in assignments_raw.items():
         "id": k,
         "staff": v.get("staff", ""),
         "child": v.get("child", ""),
-        "bathroom": v.get("bathroom", False),
-        "age": v.get("age"),
-        "signed_in": v.get("signed_in", ""),
+        "bathroom": v.get("bathroom", False)
     })
-data = pd.DataFrame(rows, columns=["id", "staff", "child", "bathroom", "age", "signed_in"])
+data = pd.DataFrame(rows, columns=["id", "staff", "child", "bathroom"])
 
 #test
 # --- PAGE NAVIGATION ---
@@ -215,28 +213,6 @@ page = st.sidebar.radio("📂 Navigate", _nav)
 # STAFF VIEW
 if page == "👩‍🏫 Staff View":
     st.title(f"SDC Dashboard — {SITE_LABEL} 😎")
-
-    STAFF_MAX = 20
-
-    def _is_unsorted(s):
-        return s.lower() in ("unsorted", "unfiltered")
-
-    def _staff_count(s):
-        return int((data["staff"] == s).sum())
-
-    def _at_capacity(s):
-        return not _is_unsorted(s) and _staff_count(s) >= STAFF_MAX
-
-    def _capacity_label(s):
-        if _is_unsorted(s):
-            return s
-        n = _staff_count(s)
-        flag = " 🔴" if n >= STAFF_MAX else (f" 🟡" if n >= STAFF_MAX - 3 else "")
-        return f"{s} ({n}/{STAFF_MAX}){flag}"
-
-    if "selected_staff" not in st.session_state:
-        _unsorted = next((s for s in STAFF if s.lower() in ("unsorted", "unfiltered")), STAFF[0] if STAFF else None)
-        st.session_state["selected_staff"] = _unsorted
     staff = st.selectbox("Select Staff", STAFF, key="selected_staff")
     if not staff: st.stop()
 
@@ -365,170 +341,45 @@ if page == "👩‍🏫 Staff View":
                 else:
                     st.error("Incorrect PIN.")
         with col_move:
-            move_to = st.selectbox("Move to:", [s for s in STAFF if s], key="bulk_move_to", format_func=_capacity_label)
+            move_to = st.selectbox("Move to:", [s for s in STAFF if s], key="bulk_move_to")
             if st.button("🔄 Move", width="stretch"):
                 if bulk_pin == CHECKOUT_PIN and bulk_pin:
-                    after_count = _staff_count(move_to) + len(selected_ids)
-                    if _at_capacity(move_to) or (not _is_unsorted(move_to) and after_count > STAFF_MAX):
-                        st.error(f"{move_to} would exceed {STAFF_MAX} kids ({_staff_count(move_to)} now + {len(selected_ids)} moving = {after_count}).")
-                    else:
-                        for child_id, child_name in selected_ids:
-                            assignments_ref.child(child_id).update({"staff": move_to, "child": child_name})
-                            logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": move_to, "child": child_name, "notes": f"Bulk moved to {move_to}"})
-                        st.success(f"Moved {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'} to {move_to}.")
-                        rerun()
+                    for child_id, child_name in selected_ids:
+                        assignments_ref.child(child_id).update({"staff": move_to, "child": child_name})
+                        logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": move_to, "child": child_name, "notes": f"Bulk moved to {move_to}"})
+                    st.success(f"Moved {len(selected_ids)} {'child' if len(selected_ids) == 1 else 'children'} to {move_to}.")
+                    rerun()
                 else:
                     st.error("Incorrect PIN.")
 
     st.subheader("➕ Add Child")
-    new_child = st.text_input("Name(s) — comma-separated, age after name (e.g. 'Hunter B 8, Retnuh 6'):", key="new_child_global")
-
-    import re as _re
-    def _parse_entries(raw):
-        result = []
-        for token in raw.split(","):
-            token = token.strip()
-            if not token:
-                continue
-            m = _re.match(r'^(.*?)\s+(\d+)\s*$', token)
-            if m:
-                result.append((m.group(1).strip(), int(m.group(2))))
-            else:
-                result.append((token, None))
-        return result
-
-    if st.button("Add Child") and new_child.strip():
-        entries = _parse_entries(new_child)
-        would_be = _staff_count(staff) + len(entries)
-        if _at_capacity(staff) or (not _is_unsorted(staff) and would_be > STAFF_MAX):
-            st.error(f"{staff} is at capacity ({_staff_count(staff)}/{STAFF_MAX}). Add to unsorted first.")
-        else:
-            for name, age in entries:
-                payload = {"staff": staff, "child": name, "signed_in": now_timestamp()}
-                if age is not None:
-                    payload["age"] = age
-                assignments_ref.push(payload)
-                logs_ref.push({"timestamp": now_timestamp(), "action": "Add", "staff": staff,
-                               "child": name, "notes": f"Added age={age}" if age else "Added"})
-            st.success(f"Added {len(entries)} child(ren).")
+    new_child = st.text_input("Name(s) — separate multiple with commas:", key="new_child_global")
+    if st.button("Add Child"):
+        names = [n.strip() for n in new_child.split(",") if n.strip()]
+        for name in names:
+            assignments_ref.push({"staff": staff, "child": name})
+            logs_ref.push({
+                "timestamp": now_timestamp(),
+                "action": "Add",
+                "staff": staff,
+                "child": name,
+                "notes": "Added"
+            })
+        if names:
+            st.success(f"Added {len(names)} child{'ren' if len(names) != 1 else ''}.")
             rerun()
-
-    # ── Distribute panel (only shown for "unsorted" staff bucket) ──
-    if staff.lower() in ("unsorted", "unfiltered"):
-        total = len(rows_with_index)
-        if total == 0:
-            st.info("No children to distribute yet.")
-        else:
-            num_groups = 3 if total >= 43 else 2
-            st.divider()
-            st.subheader("🗂️ Distribute to Classrooms")
-            st.caption(f"{total} kids · auto-split into {num_groups} groups")
-
-            aged  = [r for r in rows_with_index if r.get("age") is not None]
-            no_age = [r for r in rows_with_index if r.get("age") is None]
-
-            GROUP_MAX = 20
-            GROUP_DEFAULT = 16
-
-            def _cap(grp, mx):
-                return grp[:mx], grp[mx:]
-
-            # ── Settings row ──
-            with st.expander("⚙️ Split settings", expanded=False):
-                if num_groups == 2:
-                    sc1, sc2, sc3 = st.columns(3)
-                    split_age = sc1.number_input("Age cutoff (older ≥)", 1, 18, 8, key="split2")
-                    g1_max    = sc2.number_input("Group 1 max", 1, GROUP_MAX, GROUP_DEFAULT, key="g1_max_2")
-                    g2_max    = sc3.number_input("Group 2 max", 1, GROUP_MAX, GROUP_MAX, key="g2_max_2")
-                else:
-                    sc1, sc2, sc3, sc4, sc5 = st.columns(5)
-                    upper  = sc1.number_input("Older cutoff (≥)", 1, 18, 8, key="split3_upper")
-                    lower  = sc2.number_input("Younger cutoff (≤)", 1, 18, 6, key="split3_lower")
-                    g1_max = sc3.number_input("G1 max", 1, GROUP_MAX, GROUP_DEFAULT, key="g1_max_3")
-                    g2_max = sc4.number_input("G2 max", 1, GROUP_MAX, GROUP_MAX, key="g2_max_3")
-                    g3_max = sc5.number_input("G3 max", 1, GROUP_MAX, GROUP_MAX, key="g3_max_3")
-
-            # ── Build groups ──
-            if num_groups == 2:
-                older_all   = sorted([r for r in aged if r["age"] >= split_age], key=lambda r: -r["age"])
-                younger_all = sorted([r for r in aged if r["age"] <  split_age], key=lambda r:  r["age"]) + no_age
-                g1, of1 = _cap(older_all, g1_max)
-                g2, of2 = _cap(of1 + younger_all, g2_max)
-                groups_data  = [g1, g2]
-                group_meta   = [
-                    {"label": f"Group 1", "rule": f"age ≥ {split_age}", "overflow": of1, "overflow_to": "G2"},
-                    {"label": f"Group 2", "rule": f"age < {split_age}",  "overflow": of2, "overflow_to": None},
-                ]
-            else:
-                older_all = sorted([r for r in aged if r["age"] >= upper], key=lambda r: -r["age"])
-                young_all = sorted([r for r in aged if r["age"] <= lower], key=lambda r:  r["age"])
-                mid_base  = [r for r in aged if lower < r["age"] < upper] + no_age
-                g1, of1 = _cap(older_all, g1_max)
-                g3, of3 = _cap(young_all, g3_max)
-                g2, of2 = _cap(of1 + mid_base + of3, g2_max)
-                groups_data = [g1, g2, g3]
-                group_meta  = [
-                    {"label": "Group 1", "rule": f"age ≥ {upper}",   "overflow": of1, "overflow_to": "G2"},
-                    {"label": "Group 2", "rule": "middle / overflow", "overflow": of2, "overflow_to": None},
-                    {"label": "Group 3", "rule": f"age ≤ {lower}",   "overflow": of3, "overflow_to": "G2"},
-                ]
-
-            # ── Group cards ──
-            eligible_staff = [s for s in STAFF if not _is_unsorted(s)]
-            group_staff_sel = []
-            cols = st.columns(num_groups)
-            for gi, (col, grp, meta) in enumerate(zip(cols, groups_data, group_meta)):
-                with col:
-                    ages = [r["age"] for r in grp if r.get("age") is not None]
-                    age_range = f"{min(ages)}–{max(ages)}" if ages else "—"
-                    of = meta["overflow"]
-                    overflow_badge = f" · ⚠️ {len(of)} overflow" if of else ""
-                    st.markdown(f"**{meta['label']}** &nbsp; `{meta['rule']}`")
-                    st.caption(f"{len(grp)} kids · ages {age_range}{overflow_badge}")
-                    sel = st.selectbox("Assign to", eligible_staff, key=f"dist_staff_{gi}",
-                                       label_visibility="collapsed",
-                                       format_func=_capacity_label)
-                    group_staff_sel.append(sel)
-                    with st.expander(f"View {len(grp)} kids", expanded=False):
-                        for r in sorted(grp, key=lambda x: x["child"].lower()):
-                            age_tag = f" {r['age']}" if r.get("age") is not None else ""
-                            st.caption(f"{r['child']}{age_tag}")
-
-            st.divider()
-            all_assigned = len(set(group_staff_sel)) == len(group_staff_sel)
-            if not all_assigned:
-                st.warning("Each group needs a different staff member.")
-            if st.button("✅ Distribute", disabled=not all_assigned, type="primary"):
-                for gi, grp in enumerate(groups_data):
-                    for r in grp:
-                        assignments_ref.child(r["id"]).update({"staff": group_staff_sel[gi]})
-                        logs_ref.push({"timestamp": now_timestamp(), "action": "Move",
-                                       "staff": group_staff_sel[gi], "child": r["child"],
-                                       "notes": "Distributed from unsorted"})
-                st.success(f"Distributed {total} kids across {num_groups} groups.")
-                rerun()
 
     st.subheader("Children", divider="gray")
     st.write(f"🏕️ Total in Center: **{len(data)}**")
     st.write(f"🧑‍🏫 Under {staff}: **{len(rows_with_index)}**")
 
-    sort_by = st.segmented_control("Sort by", ["A–Z", "Time In"], default="Time In", key="child_sort")
-
-    def _sort_key(row):
-        if sort_by == "A–Z":
-            return (row["child"].lower(),)
-        else:  # Time In
-            return (0 if row.get("signed_in") else 1, row.get("signed_in") or "")
-
-    rows_with_index = sorted(rows_with_index, key=_sort_key)
 
     for i, row in enumerate(rows_with_index):
         child_name = row["child"]
         child_id = row["id"]
         in_bathroom = row.get("bathroom", False)
 
-        age_tag = f" · age {row['age']}" if row.get("age") is not None else ""
-        label = f"🚻 {child_name}{age_tag}" if in_bathroom else f"{child_name}{age_tag}"
+        label = f"🚻 {child_name}" if in_bathroom else child_name
         with st.expander(label):
             st.caption(f"📍 {new_location}")
 
@@ -545,15 +396,12 @@ if page == "👩‍🏫 Staff View":
                         logs_ref.push({"timestamp": now_timestamp(), "action": "BATHROOM", "staff": staff, "child": child_name, "notes": "Bathroom Break"})
                         rerun()
             with c2:
-                new_staff_for_child = st.selectbox("Move to:", [s for s in STAFF if s], index=STAFF.index(staff) if staff in STAFF else 0, key=f"move_{i}", label_visibility="collapsed", format_func=_capacity_label)
+                new_staff_for_child = st.selectbox("Move to:", [s for s in STAFF if s], index=STAFF.index(staff) if staff in STAFF else 0, key=f"move_{i}", label_visibility="collapsed")
                 if st.button("🔄 Move", key=f"btn_move_{i}", width="stretch"):
-                    if _at_capacity(new_staff_for_child):
-                        st.error(f"{new_staff_for_child} is full ({STAFF_MAX} max).")
-                    else:
-                        assignments_ref.child(child_id).update({"staff": new_staff_for_child, "child": child_name})
-                        logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": new_staff_for_child, "child": child_name, "notes": f"Moved from {staff} to {new_staff_for_child}"})
-                        st.success(f"Moved to {new_staff_for_child}")
-                        rerun()
+                    assignments_ref.child(child_id).update({"staff": new_staff_for_child, "child": child_name})
+                    logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": new_staff_for_child, "child": child_name, "notes": f"Moved from {staff} to {new_staff_for_child}"})
+                    st.success(f"Moved to {new_staff_for_child}")
+                    rerun()
 
             inc_col, btn_col = st.columns([0.78, 0.22])
             with inc_col:
@@ -609,15 +457,12 @@ if page == "👩‍🏫 Staff View":
                                 logs_ref.push({"timestamp": now_timestamp(), "action": "BATHROOM", "staff": other, "child": ochild, "notes": "Bathroom Break"})
                                 rerun()
                     with c2:
-                        omove_to = st.selectbox("Move to:", [s for s in STAFF if s], index=STAFF.index(other) if other in STAFF else 0, key=f"omove_{other}_{j}", label_visibility="collapsed", format_func=_capacity_label)
+                        omove_to = st.selectbox("Move to:", [s for s in STAFF if s], index=STAFF.index(other) if other in STAFF else 0, key=f"omove_{other}_{j}", label_visibility="collapsed")
                         if st.button("🔄 Move", key=f"obtn_move_{other}_{j}", width="stretch"):
-                            if _at_capacity(omove_to):
-                                st.error(f"{omove_to} is full ({STAFF_MAX} max).")
-                            else:
-                                assignments_ref.child(ochild_id).update({"staff": omove_to, "child": ochild})
-                                logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": omove_to, "child": ochild, "notes": f"Moved from {other} to {omove_to}"})
-                                st.success(f"Moved to {omove_to}")
-                                rerun()
+                            assignments_ref.child(ochild_id).update({"staff": omove_to, "child": ochild})
+                            logs_ref.push({"timestamp": now_timestamp(), "action": "Move", "staff": omove_to, "child": ochild, "notes": f"Moved from {other} to {omove_to}"})
+                            st.success(f"Moved to {omove_to}")
+                            rerun()
                     oinc_col, obtn_col = st.columns([0.78, 0.22])
                     with oinc_col:
                         oinc = st.text_input("Incident note", placeholder="Describe incident…", key=f"oinc_{other}_{j}", label_visibility="collapsed")
