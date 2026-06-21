@@ -432,14 +432,11 @@ if page == "👩‍🏫 Staff View":
     st.write(f"🏕️ Total in Center: **{len(data)}**")
     st.write(f"🧑‍🏫 Under {staff}: **{len(rows_with_index)}**")
 
-    sort_by = st.segmented_control("Sort by", ["A–Z", "Age", "Time In"], default="Time In", key="child_sort")
+    sort_by = st.segmented_control("Sort by", ["A–Z", "Time In"], default="Time In", key="child_sort")
 
     def _sort_key(row):
         if sort_by == "A–Z":
             return (row["child"].lower(),)
-        elif sort_by == "Age":
-            age = row.get("age")
-            return (0 if age is not None else 1, age if age is not None else 999)
         else:  # Time In
             return (0 if row.get("signed_in") else 1, row.get("signed_in") or "")
 
