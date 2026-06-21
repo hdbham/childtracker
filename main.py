@@ -261,6 +261,17 @@ if page == "👩‍🏫 Staff View":
     - 📢 Announce changes on walkie
     """)
 
+    sort_by = st.segmented_control("Sort by", ["A–Z", "Age", "Time In"], default="Time In", key="child_sort")
+
+    def _sort_key(row):
+        if sort_by == "A–Z":
+            return (row["child"].lower(),)
+        elif sort_by == "Age":
+            age = row.get("age")
+            return (0 if age is not None else 1, age if age is not None else 999)
+        else:
+            return (0 if row.get("signed_in") else 1, row.get("signed_in") or "")
+
     # --- BULK ACTIONS ---
     st.divider()
     st.subheader("⚡ Bulk Actions", divider="gray")
@@ -404,17 +415,6 @@ if page == "👩‍🏫 Staff View":
     st.write(f"🏕️ Total in Center: **{len(data)}**")
     st.write(f"🧑‍🏫 Under {staff}: **{len(rows_with_index)}**")
 
-    sort_by = st.segmented_control("Sort by", ["A–Z", "Age", "Time In"], default="Time In", key="child_sort")
-
-    def _sort_key(row):
-        if sort_by == "A–Z":
-            return (row["child"].lower(),)
-        elif sort_by == "Age":
-            age = row.get("age")
-            return (0 if age is not None else 1, age if age is not None else 999)
-        else:
-            return (0 if row.get("signed_in") else 1, row.get("signed_in") or "")
-
     rows_with_index = sorted(rows_with_index, key=_sort_key)
 
     for i, row in enumerate(rows_with_index):
@@ -478,7 +478,7 @@ if page == "👩‍🏫 Staff View":
         with st.expander(f"👥 Rest of Center ({len(data) - len(rows_with_index)} children)", expanded=False):
           for other in other_staff:
             other_loc = staff_lookup.get(other, "N/A")
-            other_rows = data[data["staff"] == other].to_dict(orient="records")
+            other_rows = sorted(data[data["staff"] == other].to_dict(orient="records"), key=_sort_key)
             st.markdown(f"**{other}** — {len(other_rows)} children")
             for j, orow in enumerate(other_rows):
                 ochild = orow["child"]
