@@ -353,21 +353,78 @@ if page == "👩‍🏫 Staff View":
                     st.error("Incorrect PIN.")
 
     st.subheader("➕ Add Child")
-    new_child = st.text_input("Name(s) — separate multiple with commas:", key="new_child_global")
-    if st.button("Add Child"):
-        names = [n.strip() for n in new_child.split(",") if n.strip()]
-        for name in names:
-            assignments_ref.push({"staff": staff, "child": name})
-            logs_ref.push({
-                "timestamp": now_timestamp(),
-                "action": "Add",
-                "staff": staff,
-                "child": name,
-                "notes": "Added"
-            })
-        if names:
-            st.success(f"Added {len(names)} child{'ren' if len(names) != 1 else ''}.")
+    new_child = st.text_input("Name(s) — separate multiple with commas (add age after name, e.g. 'Hunter B 2, Retnuh 4'):", key="new_child_global")
+
+    def _parse_entries(raw):
+        """Parse 'Name Age, Name Age, ...' → list of (name, age|None)."""
+        import re
+        result = []
+        for token in raw.split(","):
+            token = token.strip()
+            if not token:
+                continue
+            m = re.match(r'^(.*?)\s+(\d+)\s*$', token)
+            if m:
+                result.append((m.group(1).strip(), int(m.group(2))))
+            else:
+                result.append((token, None))
+        return result
+
+    def _build_groups(entries):
+        """Split entries into 2 or 3 age-balanced groups."""
+        n = len(entries)
+        num_groups = 3 if n > 43 else 2
+        # sort by age (None ages go last)
+        with_age = sorted([e for e in entries if e[1] is not None], key=lambda x: x[1])
+        no_age   = [e for e in entries if e[1] is None]
+        ordered  = with_age + no_age
+        # snake/round-robin across groups for age balance
+        groups = [[] for _ in range(num_groups)]
+        for i, entry in enumerate(ordered):
+            groups[i % num_groups].append(entry)
+        return groups, num_groups
+
+    parsed = _parse_entries(new_child) if new_child.strip() else []
+
+    if parsed:
+        groups, num_groups = _build_groups(parsed)
+        total = len(parsed)
+        target = total // num_groups
+        remainder = total % num_groups
+
+        st.caption(f"**{total} kids → {num_groups} groups** (recommended split: {target+1 if remainder else target}{'/' + str(target) if remainder else ''} per group)")
+
+        group_staff = []
+        cols = st.columns(num_groups)
+        for gi, (col, grp) in enumerate(zip(cols, groups)):
+            with col:
+                ages = [a for _, a in grp if a is not None]
+                age_str = f"ages {min(ages)}–{max(ages)}" if ages else "no ages"
+                st.markdown(f"**Group {gi+1}** — {len(grp)} kids, {age_str}")
+                assigned = st.selectbox("Assign to:", STAFF, key=f"grp_staff_{gi}",
+                                        index=gi % len(STAFF) if STAFF else 0)
+                group_staff.append(assigned)
+                for name, age in grp:
+                    st.caption(f"• {name}" + (f" (age {age})" if age else ""))
+
+        if st.button("✅ Confirm & Add All"):
+            added = 0
+            for gi, grp in enumerate(groups):
+                target_staff = group_staff[gi]
+                for name, age in grp:
+                    payload = {"staff": target_staff, "child": name}
+                    if age is not None:
+                        payload["age"] = age
+                    assignments_ref.push(payload)
+                    logs_ref.push({"timestamp": now_timestamp(), "action": "Add",
+                                   "staff": target_staff, "child": name,
+                                   "notes": f"Added age={age}" if age else "Added"})
+                    added += 1
+            st.success(f"Added {added} children across {num_groups} groups.")
             rerun()
+    else:
+        if st.button("Add Child"):
+            pass  # no input, nothing to do
 
     st.subheader("Children", divider="gray")
     st.write(f"🏕️ Total in Center: **{len(data)}**")
