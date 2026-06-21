@@ -416,74 +416,97 @@ if page == "👩‍🏫 Staff View":
     # ── Distribute panel (only shown for "unsorted" staff bucket) ──
     if staff.lower() in ("unsorted", "unfiltered"):
         total = len(rows_with_index)
-        num_groups = 3 if total >= 43 else 2
-        st.divider()
-        st.subheader(f"🗂️ Distribute to Classrooms ({total} kids → {num_groups} groups)")
-
-        aged = [r for r in rows_with_index if r.get("age") is not None]
-        no_age = [r for r in rows_with_index if r.get("age") is None]
-
-        GROUP_MAX = 20
-        GROUP_DEFAULT = 16
-
-        def _cap(grp, mx):
-            return grp[:mx], grp[mx:]
-
-        if num_groups == 2:
-            split_age = st.number_input("Older group age cutoff (≥)", min_value=1, max_value=18, value=8, key="split2")
-            g1_max = st.number_input("Group 1 max", min_value=1, max_value=GROUP_MAX, value=GROUP_DEFAULT, key="g1_max_2")
-            g2_max = st.number_input("Group 2 max", min_value=1, max_value=GROUP_MAX, value=GROUP_MAX, key="g2_max_2")
-            older_all = sorted([r for r in aged if r["age"] >= split_age], key=lambda r: -r["age"])
-            younger_all = sorted([r for r in aged if r["age"] < split_age], key=lambda r: r["age"]) + no_age
-            older, of1 = _cap(older_all, g1_max)
-            younger, of2 = _cap(of1 + younger_all, g2_max)
-            groups_data = [older, younger]
-            group_labels = [
-                f"Group 1 (age ≥ {split_age}, max {g1_max})" + (f"  ⚠️ +{len(of1)} → G2" if of1 else ""),
-                f"Group 2 (age < {split_age}, max {g2_max})" + (f"  ⚠️ {len(of2)} overflow" if of2 else ""),
-            ]
+        if total == 0:
+            st.info("No children to distribute yet.")
         else:
-            upper = st.number_input("Oldest group cutoff (≥)", min_value=1, max_value=18, value=8, key="split3_upper")
-            lower = st.number_input("Youngest group cutoff (≤)", min_value=1, max_value=18, value=6, key="split3_lower")
-            c1, c2, c3 = st.columns(3)
-            g1_max = c1.number_input("G1 max", min_value=1, max_value=GROUP_MAX, value=GROUP_DEFAULT, key="g1_max_3")
-            g2_max = c2.number_input("G2 max", min_value=1, max_value=GROUP_MAX, value=GROUP_MAX, key="g2_max_3")
-            g3_max = c3.number_input("G3 max", min_value=1, max_value=GROUP_MAX, value=GROUP_MAX, key="g3_max_3")
-            older_all = sorted([r for r in aged if r["age"] >= upper], key=lambda r: -r["age"])
-            young_all  = sorted([r for r in aged if r["age"] <= lower], key=lambda r: r["age"])
-            mid_base   = [r for r in aged if lower < r["age"] < upper] + no_age
-            g_old,  of1 = _cap(older_all, g1_max)
-            g_young, of3 = _cap(young_all, g3_max)
-            g_mid,  of2 = _cap(of1 + mid_base + of3, g2_max)
-            groups_data = [g_old, g_mid, g_young]
-            group_labels = [
-                f"Group 1 (age ≥ {upper}, max {g1_max})" + (f"  ⚠️ +{len(of1)} → G2" if of1 else ""),
-                f"Group 2 (middle, max {g2_max})" + (f"  ⚠️ {len(of2)} overflow" if of2 else ""),
-                f"Group 3 (age ≤ {lower}, max {g3_max})" + (f"  ⚠️ +{len(of3)} → G2" if of3 else ""),
-            ]
+            num_groups = 3 if total >= 43 else 2
+            st.divider()
+            st.subheader("🗂️ Distribute to Classrooms")
+            st.caption(f"{total} kids · auto-split into {num_groups} groups")
 
-        group_staff_sel = []
-        cols = st.columns(num_groups)
-        for gi, (col, grp, lbl) in enumerate(zip(cols, groups_data, group_labels)):
-            with col:
-                ages = [r["age"] for r in grp if r.get("age") is not None]
-                age_str = f"ages {min(ages)}–{max(ages)}" if ages else "no ages"
-                st.markdown(f"**{lbl}**  \n{len(grp)} kids · {age_str}")
-                sel = st.selectbox("→ Staff:", [s for s in STAFF if s.lower() not in ("unsorted","unfiltered")],
-                                   key=f"dist_staff_{gi}")
-                group_staff_sel.append(sel)
-                for r in sorted(grp, key=lambda x: x["child"].lower()):
-                    st.caption(f"• {r['child']}" + (f" ({r['age']})" if r.get("age") is not None else ""))
+            aged  = [r for r in rows_with_index if r.get("age") is not None]
+            no_age = [r for r in rows_with_index if r.get("age") is None]
 
-        if st.button("✅ Distribute"):
-            for gi, grp in enumerate(groups_data):
-                for r in grp:
-                    assignments_ref.child(r["id"]).update({"staff": group_staff_sel[gi]})
-                    logs_ref.push({"timestamp": now_timestamp(), "action": "Move",
-                                   "staff": group_staff_sel[gi], "child": r["child"],
-                                   "notes": f"Distributed from unsorted"})
-            st.success("Children distributed.")
-            rerun()
+            GROUP_MAX = 20
+            GROUP_DEFAULT = 16
+
+            def _cap(grp, mx):
+                return grp[:mx], grp[mx:]
+
+            # ── Settings row ──
+            with st.expander("⚙️ Split settings", expanded=False):
+                if num_groups == 2:
+                    sc1, sc2, sc3 = st.columns(3)
+                    split_age = sc1.number_input("Age cutoff (older ≥)", 1, 18, 8, key="split2")
+                    g1_max    = sc2.number_input("Group 1 max", 1, GROUP_MAX, GROUP_DEFAULT, key="g1_max_2")
+                    g2_max    = sc3.number_input("Group 2 max", 1, GROUP_MAX, GROUP_MAX, key="g2_max_2")
+                else:
+                    sc1, sc2, sc3, sc4, sc5 = st.columns(5)
+                    upper  = sc1.number_input("Older cutoff (≥)", 1, 18, 8, key="split3_upper")
+                    lower  = sc2.number_input("Younger cutoff (≤)", 1, 18, 6, key="split3_lower")
+                    g1_max = sc3.number_input("G1 max", 1, GROUP_MAX, GROUP_DEFAULT, key="g1_max_3")
+                    g2_max = sc4.number_input("G2 max", 1, GROUP_MAX, GROUP_MAX, key="g2_max_3")
+                    g3_max = sc5.number_input("G3 max", 1, GROUP_MAX, GROUP_MAX, key="g3_max_3")
+
+            # ── Build groups ──
+            if num_groups == 2:
+                older_all   = sorted([r for r in aged if r["age"] >= split_age], key=lambda r: -r["age"])
+                younger_all = sorted([r for r in aged if r["age"] <  split_age], key=lambda r:  r["age"]) + no_age
+                g1, of1 = _cap(older_all, g1_max)
+                g2, of2 = _cap(of1 + younger_all, g2_max)
+                groups_data  = [g1, g2]
+                group_meta   = [
+                    {"label": f"Group 1", "rule": f"age ≥ {split_age}", "overflow": of1, "overflow_to": "G2"},
+                    {"label": f"Group 2", "rule": f"age < {split_age}",  "overflow": of2, "overflow_to": None},
+                ]
+            else:
+                older_all = sorted([r for r in aged if r["age"] >= upper], key=lambda r: -r["age"])
+                young_all = sorted([r for r in aged if r["age"] <= lower], key=lambda r:  r["age"])
+                mid_base  = [r for r in aged if lower < r["age"] < upper] + no_age
+                g1, of1 = _cap(older_all, g1_max)
+                g3, of3 = _cap(young_all, g3_max)
+                g2, of2 = _cap(of1 + mid_base + of3, g2_max)
+                groups_data = [g1, g2, g3]
+                group_meta  = [
+                    {"label": "Group 1", "rule": f"age ≥ {upper}",   "overflow": of1, "overflow_to": "G2"},
+                    {"label": "Group 2", "rule": "middle / overflow", "overflow": of2, "overflow_to": None},
+                    {"label": "Group 3", "rule": f"age ≤ {lower}",   "overflow": of3, "overflow_to": "G2"},
+                ]
+
+            # ── Group cards ──
+            eligible_staff = [s for s in STAFF if not _is_unsorted(s)]
+            group_staff_sel = []
+            cols = st.columns(num_groups)
+            for gi, (col, grp, meta) in enumerate(zip(cols, groups_data, group_meta)):
+                with col:
+                    ages = [r["age"] for r in grp if r.get("age") is not None]
+                    age_range = f"{min(ages)}–{max(ages)}" if ages else "—"
+                    of = meta["overflow"]
+                    overflow_badge = f" · ⚠️ {len(of)} overflow" if of else ""
+                    st.markdown(f"**{meta['label']}** &nbsp; `{meta['rule']}`")
+                    st.caption(f"{len(grp)} kids · ages {age_range}{overflow_badge}")
+                    sel = st.selectbox("Assign to", eligible_staff, key=f"dist_staff_{gi}",
+                                       label_visibility="collapsed",
+                                       format_func=_capacity_label)
+                    group_staff_sel.append(sel)
+                    with st.expander(f"View {len(grp)} kids", expanded=False):
+                        for r in sorted(grp, key=lambda x: x["child"].lower()):
+                            age_tag = f" {r['age']}" if r.get("age") is not None else ""
+                            st.caption(f"{r['child']}{age_tag}")
+
+            st.divider()
+            all_assigned = len(set(group_staff_sel)) == len(group_staff_sel)
+            if not all_assigned:
+                st.warning("Each group needs a different staff member.")
+            if st.button("✅ Distribute", disabled=not all_assigned, type="primary"):
+                for gi, grp in enumerate(groups_data):
+                    for r in grp:
+                        assignments_ref.child(r["id"]).update({"staff": group_staff_sel[gi]})
+                        logs_ref.push({"timestamp": now_timestamp(), "action": "Move",
+                                       "staff": group_staff_sel[gi], "child": r["child"],
+                                       "notes": "Distributed from unsorted"})
+                st.success(f"Distributed {total} kids across {num_groups} groups.")
+                rerun()
 
     st.subheader("Children", divider="gray")
     st.write(f"🏕️ Total in Center: **{len(data)}**")
